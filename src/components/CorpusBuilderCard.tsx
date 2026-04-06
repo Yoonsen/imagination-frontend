@@ -13,11 +13,12 @@ export const CorpusBuilderCard: React.FC = () => {
         setActiveDhlabids,
         activeDhlabids,
         setIsBrowseTableOpen,
+        isCorpusBuilderOpen,
+        setIsCorpusBuilderOpen,
         downlightPercentile,
         setDownlightPercentile,
         API_URL
     } = useCorpus();
-    const [isMinimized, setIsMinimized] = useState(false);
     const [operationMode, setOperationMode] = useState<'add'|'intersect'|'remove'>('add');
     
     // Form states
@@ -212,6 +213,8 @@ export const CorpusBuilderCard: React.FC = () => {
         reader.readAsArrayBuffer(file);
     };
 
+    if (!isCorpusBuilderOpen) return null;
+
     return (
         <Rnd
             default={{ x: 30, y: 30, width: 340, height: 'auto' }}
@@ -225,14 +228,13 @@ export const CorpusBuilderCard: React.FC = () => {
                     <i className="fas fa-tools"></i> Corpus Builder
                 </div>
                 <div className="card-controls no-drag">
-                    <button onClick={() => setIsMinimized(!isMinimized)}>
-                        <i className={isMinimized ? "fas fa-window-maximize" : "fas fa-window-minimize"}></i>
+                    <button onClick={() => setIsCorpusBuilderOpen(false)} title="Minimer til chip">
+                        <i className="fas fa-window-minimize"></i>
                     </button>
                 </div>
             </div>
 
-            {!isMinimized && (
-                <div className="card-body no-drag">
+            <div className="card-body no-drag">
                     <div className="toolbar mb-2">
                         <button className="btn-text" onClick={handleClear}>Tøm alle filtre</button>
                         <button className="btn-text danger" onClick={() => setActiveDhlabids([])}>
@@ -346,8 +348,7 @@ export const CorpusBuilderCard: React.FC = () => {
                             <i className="fas fa-list"></i> Vis Tabell
                         </button>
                     </div>
-                </div>
-            )}
+            </div>
         </Rnd>
     );
 };

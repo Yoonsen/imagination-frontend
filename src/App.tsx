@@ -6,11 +6,12 @@ import { MapMarkers } from './components/MapMarkers'
 import { PlaceSummaryCard } from './components/PlaceSummaryCard'
 import { CorpusBrowseTable } from './components/CorpusBrowseTable'
 import { EntityInspectorPanel } from './components/EntityInspectorPanel'
+import { Omnibox } from './components/Omnibox'
 import { useCorpus } from './context/CorpusContext'
 import './index.css'
 
 function App() {
-  const { setIsBrowseTableOpen } = useCorpus();
+  const { setIsBrowseTableOpen, setIsCorpusBuilderOpen } = useCorpus();
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [inspectorMode, setInspectorMode] = useState<'authors' | 'places' | null>(null);
   const [inspectorTab, setInspectorTab] = useState<'list' | 'images'>('list');
@@ -27,17 +28,21 @@ function App() {
       </MapContainer>
 
       {/* Floating UI Elements */}
+      <Omnibox onSelectPlace={setSelectedPlace} />
       <StatsHUD
         onBooksDefaultClick={() => {
           setIsBrowseTableOpen(true);
+          setIsCorpusBuilderOpen(false);
           setInspectorMode(null);
         }}
         onBooksCorpusBuilderClick={() => {
           setIsBrowseTableOpen(false);
+          setIsCorpusBuilderOpen(true);
           setInspectorMode(null);
         }}
         onBooksTableClick={() => {
           setIsBrowseTableOpen(true);
+          setIsCorpusBuilderOpen(false);
           setInspectorMode(null);
         }}
         onAuthorsClick={() => {

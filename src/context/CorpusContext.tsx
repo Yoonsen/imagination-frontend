@@ -34,6 +34,8 @@ interface CorpusContextType {
   activeBooksMetadata: BookMetadata[];
   isBrowseTableOpen: boolean;
   setIsBrowseTableOpen: (val: boolean) => void;
+  isCorpusBuilderOpen: boolean;
+  setIsCorpusBuilderOpen: (val: boolean) => void;
   // Map properties
   places: PlacePoint[];
   totalPlaces: number;
@@ -50,6 +52,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isBrowseTableOpen, setIsBrowseTableOpen] = useState(false);
+  const [isCorpusBuilderOpen, setIsCorpusBuilderOpen] = useState(false);
   
   const [places, setPlaces] = useState<PlacePoint[]>([]);
   const [totalPlaces, setTotalPlaces] = useState<number>(0);
@@ -117,6 +120,8 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       activeBooksMetadata,
       isBrowseTableOpen,
       setIsBrowseTableOpen,
+      isCorpusBuilderOpen,
+      setIsCorpusBuilderOpen,
       places,
       totalPlaces,
       isPlacesLoading,

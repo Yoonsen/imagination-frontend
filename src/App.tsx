@@ -5,10 +5,15 @@ import { CorpusBuilderCard } from './components/CorpusBuilderCard'
 import { MapMarkers } from './components/MapMarkers'
 import { PlaceSummaryCard } from './components/PlaceSummaryCard'
 import { CorpusBrowseTable } from './components/CorpusBrowseTable'
+import { EntityInspectorPanel } from './components/EntityInspectorPanel'
+import { useCorpus } from './context/CorpusContext'
 import './index.css'
 
 function App() {
+  const { setIsBrowseTableOpen } = useCorpus();
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
+  const [inspectorMode, setInspectorMode] = useState<'authors' | 'places' | null>(null);
+  const [inspectorTab, setInspectorTab] = useState<'list' | 'images'>('list');
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -22,9 +27,44 @@ function App() {
       </MapContainer>
 
       {/* Floating UI Elements */}
-      <StatsHUD />
+      <StatsHUD
+        onBooksDefaultClick={() => {
+          setIsBrowseTableOpen(true);
+          setInspectorMode(null);
+        }}
+        onBooksCorpusBuilderClick={() => {
+          setIsBrowseTableOpen(false);
+          setInspectorMode(null);
+        }}
+        onBooksTableClick={() => {
+          setIsBrowseTableOpen(true);
+          setInspectorMode(null);
+        }}
+        onAuthorsClick={() => {
+          setInspectorMode('authors');
+          setInspectorTab('images');
+        }}
+        onPlacesDefaultClick={() => {
+          setInspectorMode('places');
+          setInspectorTab('list');
+        }}
+        onPlacesListClick={() => {
+          setInspectorMode('places');
+          setInspectorTab('list');
+        }}
+        onPlacesImagesClick={() => {
+          setInspectorMode('places');
+          setInspectorTab('images');
+        }}
+      />
       <CorpusBuilderCard />
       <CorpusBrowseTable />
+      <EntityInspectorPanel
+        mode={inspectorMode}
+        initialTab={inspectorTab}
+        onClose={() => setInspectorMode(null)}
+        onSelectPlace={(token) => setSelectedPlace(token)}
+      />
       <PlaceSummaryCard token={selectedPlace} onClose={() => setSelectedPlace(null)} />
 
     </div>

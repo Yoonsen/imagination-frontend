@@ -26,6 +26,54 @@
     transition: all 0.2s ease-in-out;
 }
 
+.chip-button {
+    border: none;
+    cursor: pointer;
+}
+
+.chip-menu-wrapper {
+    position: relative;
+}
+
+.chip-caret {
+    margin-left: 4px;
+    opacity: 0.65;
+    font-size: 0.72rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.chip-menu {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    min-width: 180px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 2200;
+}
+
+.chip-menu button {
+    border: none;
+    background: transparent;
+    color: #1e293b;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.chip-menu button:hover {
+    background: rgba(75, 108, 183, 0.12);
+}
+
 .chip:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.2);

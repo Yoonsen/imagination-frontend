@@ -22,7 +22,7 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
     onPlacesImagesClick
 }) => {
     const { activeBooksMetadata, allBooks, isLoading, places, totalPlaces } = useCorpus();
-    const [openMenu, setOpenMenu] = useState<'books' | 'places' | null>(null);
+    const [openMenu, setOpenMenu] = useState<'books' | 'authors' | 'places' | null>(null);
     const closeTimer = useRef<number | null>(null);
 
     const stats = useMemo(() => {
@@ -49,7 +49,7 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
         }
     };
 
-    const openMenuNow = (menu: 'books' | 'places') => {
+    const openMenuNow = (menu: 'books' | 'authors' | 'places') => {
         cancelClose();
         setOpenMenu(menu);
     };
@@ -66,60 +66,76 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
 
     return (
         <div className="stats-hud-container">
-            <div
-                className="chip-menu-wrapper"
-                onMouseEnter={() => openMenuNow('books')}
-                onMouseLeave={scheduleClose}
-            >
-                <button className="chip chip-button" onClick={onBooksDefaultClick} title="Åpne bokfunksjoner">
-                    <i className="fas fa-book"></i>
-                    <span className="chip-text">
-                        <span className="chip-value">{stats.books.toLocaleString()}</span> Bøker
-                    </span>
-                    <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'books' ? null : 'books'); }}>
-                        <i className="fas fa-chevron-down"></i>
-                    </span>
-                </button>
-                {openMenu === 'books' && (
-                    <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                        <button onClick={() => { onBooksCorpusBuilderClick(); setOpenMenu(null); }}>Corpus Builder</button>
-                        <button onClick={() => { onBooksTableClick(); setOpenMenu(null); }}>Vis tabell</button>
-                    </div>
-                )}
+            <div className="chip-cluster">
+                <div
+                    className="chip-menu-wrapper"
+                    onMouseEnter={() => openMenuNow('books')}
+                    onMouseLeave={scheduleClose}
+                >
+                    <button className="chip chip-button" onClick={onBooksDefaultClick} title="Åpne bokfunksjoner">
+                        <i className="fas fa-book"></i>
+                        <span className="chip-text">
+                            <span className="chip-value">{stats.books.toLocaleString()}</span> Bøker
+                        </span>
+                        <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'books' ? null : 'books'); }}>
+                            <i className="fas fa-chevron-down"></i>
+                        </span>
+                    </button>
+                    {openMenu === 'books' && (
+                        <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+                            <button onClick={() => { onBooksCorpusBuilderClick(); setOpenMenu(null); }}>Corpus Builder</button>
+                            <button onClick={() => { onBooksTableClick(); setOpenMenu(null); }}>Vis tabell</button>
+                        </div>
+                    )}
+                </div>
+                <div
+                    className="chip-menu-wrapper"
+                    onMouseEnter={() => openMenuNow('authors')}
+                    onMouseLeave={scheduleClose}
+                >
+                    <button className="chip chip-button" onClick={onAuthorsClick} title="Åpne forfatterfunksjoner">
+                        <i className="fas fa-user-edit"></i>
+                        <span className="chip-text">
+                            <span className="chip-value">{stats.authors.toLocaleString()}</span> Forfattere
+                        </span>
+                        <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'authors' ? null : 'authors'); }}>
+                            <i className="fas fa-chevron-down"></i>
+                        </span>
+                    </button>
+                    {openMenu === 'authors' && (
+                        <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+                            <button onClick={() => { onAuthorsClick(); setOpenMenu(null); }}>Forfatterliste og bilder</button>
+                        </div>
+                    )}
+                </div>
+                <div
+                    className="chip-menu-wrapper"
+                    onMouseEnter={() => openMenuNow('places')}
+                    onMouseLeave={scheduleClose}
+                >
+                    <button className="chip chip-button" onClick={onPlacesDefaultClick} title="Åpne stedsfunksjoner">
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span className="chip-text">
+                            <span className="chip-value">{totalPlaces.toLocaleString()}</span> Steder
+                            {totalPlaces > places.length && <span style={{ fontSize: '0.7em', marginLeft: 4, opacity: 0.7 }}>(Vist: {places.length})</span>}
+                        </span>
+                        <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'places' ? null : 'places'); }}>
+                            <i className="fas fa-chevron-down"></i>
+                        </span>
+                    </button>
+                    {openMenu === 'places' && (
+                        <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+                            <button onClick={() => { onPlacesListClick(); setOpenMenu(null); }}>Interaktiv liste</button>
+                            <button onClick={() => { onPlacesImagesClick(); setOpenMenu(null); }}>Bilder (IIIF)</button>
+                        </div>
+                    )}
+                </div>
             </div>
-            <button className="chip chip-button" onClick={onAuthorsClick} title="Åpne forfatterliste med bilder">
-                <i className="fas fa-user-edit"></i>
-                <span className="chip-text">
-                    <span className="chip-value">{stats.authors.toLocaleString()}</span> Forfattere
-                </span>
-            </button>
             <div className="chip">
                 <i className="fas fa-calendar-alt"></i>
                 <span className="chip-text">
                     {stats.yearString}
                 </span>
-            </div>
-            <div
-                className="chip-menu-wrapper"
-                onMouseEnter={() => openMenuNow('places')}
-                onMouseLeave={scheduleClose}
-            >
-                <button className="chip chip-button" onClick={onPlacesDefaultClick} title="Åpne stedsfunksjoner">
-                    <i className="fas fa-map-marker-alt"></i>
-                    <span className="chip-text">
-                        <span className="chip-value">{totalPlaces.toLocaleString()}</span> Steder
-                        {totalPlaces > places.length && <span style={{ fontSize: '0.7em', marginLeft: 4, opacity: 0.7 }}>(Vist: {places.length})</span>}
-                    </span>
-                    <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'places' ? null : 'places'); }}>
-                        <i className="fas fa-chevron-down"></i>
-                    </span>
-                </button>
-                {openMenu === 'places' && (
-                    <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                        <button onClick={() => { onPlacesListClick(); setOpenMenu(null); }}>Interaktiv liste</button>
-                        <button onClick={() => { onPlacesImagesClick(); setOpenMenu(null); }}>Bilder (IIIF)</button>
-                    </div>
-                )}
             </div>
             <div className="chip active-db">
                 <i className="fas fa-database"></i>

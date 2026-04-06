@@ -38,6 +38,8 @@ interface CorpusContextType {
   setIsCorpusBuilderOpen: (val: boolean) => void;
   isVisualsOpen: boolean;
   setIsVisualsOpen: (val: boolean) => void;
+  activeWindow: 'builder' | 'browse' | 'visuals' | 'entity' | 'summary' | null;
+  setActiveWindow: (window: 'builder' | 'browse' | 'visuals' | 'entity' | 'summary' | null) => void;
   // Map properties
   places: PlacePoint[];
   totalPlaces: number;
@@ -58,6 +60,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isBrowseTableOpen, setIsBrowseTableOpen] = useState(false);
   const [isCorpusBuilderOpen, setIsCorpusBuilderOpen] = useState(false);
   const [isVisualsOpen, setIsVisualsOpen] = useState(false);
+  const [activeWindow, setActiveWindow] = useState<'builder' | 'browse' | 'visuals' | 'entity' | 'summary' | null>(null);
   
   const [places, setPlaces] = useState<PlacePoint[]>([]);
   const [totalPlaces, setTotalPlaces] = useState<number>(0);
@@ -130,6 +133,8 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setIsCorpusBuilderOpen,
       isVisualsOpen,
       setIsVisualsOpen,
+      activeWindow,
+      setActiveWindow,
       places,
       totalPlaces,
       isPlacesLoading,

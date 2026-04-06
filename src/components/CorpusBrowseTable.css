@@ -1,7 +1,3 @@
-.corpus-browse-table-rnd {
-    z-index: 1500 !important;
-}
-
 .table-card {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
@@ -44,9 +40,19 @@
     font-size: 1.2rem;
     color: #64748b;
     transition: color 0.2s;
+    min-width: 28px;
+    min-height: 28px;
 }
 .table-controls button:hover {
     color: #ef4444;
+}
+
+@media (max-width: 900px) {
+    .table-controls button {
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 1rem;
+    }
 }
 
 .table-body {

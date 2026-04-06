@@ -6,7 +6,7 @@ import './CorpusBrowseTable.css';
 type SortKey = keyof BookMetadata;
 
 export const CorpusBrowseTable: React.FC = () => {
-    const { activeBooksMetadata, isBrowseTableOpen, setIsBrowseTableOpen } = useCorpus();
+    const { activeBooksMetadata, isBrowseTableOpen, setIsBrowseTableOpen, activeWindow, setActiveWindow } = useCorpus();
     const [sortKey, setSortKey] = useState<SortKey>('author');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -56,9 +56,12 @@ export const CorpusBrowseTable: React.FC = () => {
             bounds="parent"
             cancel=".no-drag"
             className="corpus-browse-table-rnd"
+            style={{ zIndex: activeWindow === 'browse' ? 2600 : 1700 }}
+            onDragStart={() => setActiveWindow('browse')}
+            onResizeStart={() => setActiveWindow('browse')}
         >
             <div className="table-card glassmorphism">
-                <div className="table-header drag-handle">
+                <div className="table-header drag-handle" onMouseDown={() => setActiveWindow('browse')}>
                     <div className="table-title">
                         <i className="fas fa-list"></i> Aktivt Korpus ({activeBooksMetadata.length} bøker)
                     </div>

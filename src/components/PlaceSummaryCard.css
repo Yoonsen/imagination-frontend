@@ -12,7 +12,7 @@
     border-radius: 12px;
     display: flex;
     flex-direction: column;
-    z-index: 2000 !important;
+    z-index: 2000;
     overflow: hidden;
     animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -49,9 +49,19 @@
     color: #64748b;
     transition: color 0.2s;
     padding: 0;
+    min-width: 28px;
+    min-height: 28px;
 }
 .summary-header button:hover {
     color: #ef4444;
+}
+
+@media (max-width: 900px) {
+    .summary-header button {
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 1rem;
+    }
 }
 
 .summary-body {

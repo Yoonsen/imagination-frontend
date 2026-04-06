@@ -18,7 +18,7 @@ interface PlaceBookDetail {
 }
 
 export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, onClose }) => {
-    const { activeDhlabids, API_URL } = useCorpus();
+    const { activeDhlabids, API_URL, activeWindow, setActiveWindow } = useCorpus();
     const [books, setBooks] = useState<PlaceBookDetail[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [concordance, setConcordance] = useState<string[]>([]);
@@ -93,7 +93,11 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, onClo
     if (!token) return null;
 
     return (
-        <div className="place-summary-card glassmorphism">
+        <div
+            className="place-summary-card glassmorphism"
+            style={{ zIndex: activeWindow === 'summary' ? 2600 : 2000 }}
+            onMouseDown={() => setActiveWindow('summary')}
+        >
             <div className="summary-header">
                 <h3><i className="fas fa-map-marker-alt" style={{color: '#dc2626'}}></i> {token}</h3>
                 <button onClick={onClose}><i className="fas fa-times"></i></button>

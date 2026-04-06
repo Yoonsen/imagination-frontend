@@ -2,7 +2,7 @@
   position: absolute;
   top: 74px;
   left: 18px;
-  z-index: 2050;
+  z-index: 5000;
 }
 
 .visuals-launcher-chip {
@@ -14,4 +14,5 @@
   left: 0;
   top: calc(100% + 8px);
   bottom: auto;
+  z-index: 5100;
 }

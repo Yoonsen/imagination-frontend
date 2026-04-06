@@ -9,6 +9,8 @@ export const VisualsCard: React.FC = () => {
   const {
     isVisualsOpen,
     setIsVisualsOpen,
+    activeWindow,
+    setActiveWindow,
     mapVisualMode,
     setMapVisualMode,
     downlightPercentile,
@@ -24,8 +26,11 @@ export const VisualsCard: React.FC = () => {
       bounds="parent"
       cancel=".no-drag"
       className="visuals-card"
+      style={{ zIndex: activeWindow === 'visuals' ? 2600 : 1750 }}
+      onDragStart={() => setActiveWindow('visuals')}
+      onResizeStart={() => setActiveWindow('visuals')}
     >
-      <div className="visuals-header drag-handle">
+      <div className="visuals-header drag-handle" onMouseDown={() => setActiveWindow('visuals')}>
         <div className="visuals-title">
           <i className="fas fa-layer-group"></i> Visuals
         </div>

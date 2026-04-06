@@ -7,7 +7,7 @@
     border-radius: 12px;
     display: flex;
     flex-direction: column;
-    z-index: 2000 !important;
+    z-index: 2000;
 }
 
 .card-header {
@@ -42,10 +42,20 @@
     cursor: pointer;
     color: #64748b;
     padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
     transition: color 0.2s;
 }
 .card-controls button:hover {
     color: #0f172a;
+}
+
+@media (max-width: 900px) {
+    .card-controls button {
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 1rem;
+    }
 }
 
 .card-body {

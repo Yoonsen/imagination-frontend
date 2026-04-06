@@ -29,7 +29,7 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   onClose,
   onSelectPlace
 }) => {
-  const { activeBooksMetadata, places, isPlacesLoading } = useCorpus();
+  const { activeBooksMetadata, places, isPlacesLoading, activeWindow, setActiveWindow } = useCorpus();
   const [activeTab, setActiveTab] = useState<'list' | 'images'>(initialTab);
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [images, setImages] = useState<CatalogImage[]>([]);
@@ -118,7 +118,11 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   const hasRows = items.length > 0;
 
   return (
-    <div className="entity-panel">
+    <div
+      className="entity-panel"
+      style={{ zIndex: activeWindow === 'entity' ? 2600 : 1800 }}
+      onMouseDown={() => setActiveWindow('entity')}
+    >
       <div className="entity-panel-header">
         <h3>
           <i className={mode === 'authors' ? 'fas fa-user-edit' : 'fas fa-map-marker-alt'}></i>

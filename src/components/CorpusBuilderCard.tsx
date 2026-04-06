@@ -14,6 +14,8 @@ export const CorpusBuilderCard: React.FC = () => {
         activeDhlabids,
         isCorpusBuilderOpen,
         setIsCorpusBuilderOpen,
+        activeWindow,
+        setActiveWindow,
         API_URL
     } = useCorpus();
     const [operationMode, setOperationMode] = useState<'add'|'intersect'|'remove'>('add');
@@ -219,8 +221,11 @@ export const CorpusBuilderCard: React.FC = () => {
             bounds="parent"
             cancel=".no-drag"
             className="corpus-builder-card"
+            style={{ zIndex: activeWindow === 'builder' ? 2600 : 1700 }}
+            onDragStart={() => setActiveWindow('builder')}
+            onResizeStart={() => setActiveWindow('builder')}
         >
-            <div className="card-header drag-handle">
+            <div className="card-header drag-handle" onMouseDown={() => setActiveWindow('builder')}>
                 <div className="card-title">
                     <i className="fas fa-tools"></i> Corpus Builder
                 </div>

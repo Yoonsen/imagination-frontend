@@ -30,6 +30,8 @@
   background: transparent;
   color: #64748b;
   cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .visuals-body {
@@ -67,4 +69,12 @@
   border-color: rgba(75, 108, 183, 0.5);
   background: rgba(75, 108, 183, 0.14);
   color: #1d4ed8;
+}
+
+@media (max-width: 900px) {
+  .visuals-controls button {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 1rem;
+  }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Rnd } from 'react-rnd';
 import { useCorpus } from '../context/CorpusContext';
 import { fetchNbCatalogImages, type CatalogImage } from '../utils/iiif';
 import './EntityInspectorPanel.css';
@@ -6,6 +7,8 @@ import './EntityInspectorPanel.css';
 interface EntityInspectorPanelProps {
   mode: 'authors' | 'places' | null;
   initialTab?: 'list' | 'images';
+  windowKey?: 'entityAuthors' | 'entityPlaces';
+  defaultPosition?: { x: number; y: number };
   onClose: () => void;
   onSelectPlace: (token: string) => void;
 }
@@ -16,6 +19,8 @@ interface ListItem {
   sublabel: string;
 }
 
+type PlaceSortKey = 'token' | 'name' | 'doc_count' | 'frequency';
+
 function splitAuthors(raw: string): string[] {
   return raw
     .split('/')
@@ -23,9 +28,19 @@ function splitAuthors(raw: string): string[] {
     .filter(Boolean);
 }
 
+function hashToken(value: string): number {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) + hash) + value.charCodeAt(i);
+  }
+  return hash >>> 0;
+}
+
 export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   mode,
   initialTab = 'list',
+  windowKey = 'entityPlaces',
+  defaultPosition,
   onClose,
   onSelectPlace
 }) => {
@@ -35,6 +50,16 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   const [images, setImages] = useState<CatalogImage[]>([]);
   const [isImagesLoading, setIsImagesLoading] = useState(false);
   const [imagesError, setImagesError] = useState<string | null>(null);
+  const [authorImageQuery, setAuthorImageQuery] = useState('');
+  const [authorImageSearchTerm, setAuthorImageSearchTerm] = useState('');
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeSortKey, setPlaceSortKey] = useState<PlaceSortKey>('frequency');
+  const [placeSortDir, setPlaceSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sampleEnabled, setSampleEnabled] = useState(false);
+  const [sampleSeed, setSampleSeed] = useState(1);
+  const [sampleSize, setSampleSize] = useState(500);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [placePage, setPlacePage] = useState(1);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -71,6 +96,57 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
     return [];
   }, [mode, activeBooksMetadata, places]);
 
+  const placeRows = useMemo(() => {
+    const query = placeQuery.trim().toLowerCase();
+    let rows = [...places];
+    if (query) {
+      rows = rows.filter((place) =>
+        (place.token || '').toLowerCase().includes(query) ||
+        (place.name || '').toLowerCase().includes(query)
+      );
+    }
+    rows.sort((a, b) => {
+      let cmp = 0;
+      if (placeSortKey === 'token') cmp = a.token.localeCompare(b.token, 'no');
+      if (placeSortKey === 'name') cmp = (a.name || '').localeCompare(b.name || '', 'no');
+      if (placeSortKey === 'doc_count') cmp = a.doc_count - b.doc_count;
+      if (placeSortKey === 'frequency') cmp = a.frequency - b.frequency;
+      return placeSortDir === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }, [places, placeQuery, placeSortKey, placeSortDir]);
+
+  const placeRowsView = useMemo(() => {
+    if (!sampleEnabled || placeRows.length <= sampleSize) return placeRows;
+    return [...placeRows]
+      .sort((a, b) => {
+        const ah = hashToken(`${a.id}:${sampleSeed}`);
+        const bh = hashToken(`${b.id}:${sampleSeed}`);
+        return ah - bh;
+      })
+      .slice(0, sampleSize);
+  }, [placeRows, sampleEnabled, sampleSize, sampleSeed]);
+
+  const placeTotalPages = Math.max(1, Math.ceil(placeRowsView.length / rowsPerPage));
+
+  const placePageRows = useMemo(() => {
+    const start = (placePage - 1) * rowsPerPage;
+    return placeRowsView.slice(start, start + rowsPerPage);
+  }, [placeRowsView, placePage, rowsPerPage]);
+
+  const placePageStart = placeRowsView.length === 0 ? 0 : (placePage - 1) * rowsPerPage + 1;
+  const placePageEnd = placeRowsView.length === 0
+    ? 0
+    : Math.min(placeRowsView.length, placePage * rowsPerPage);
+
+  useEffect(() => {
+    setPlacePage(1);
+  }, [placeQuery, sampleEnabled, sampleSize, rowsPerPage]);
+
+  useEffect(() => {
+    if (placePage > placeTotalPages) setPlacePage(placeTotalPages);
+  }, [placePage, placeTotalPages]);
+
   useEffect(() => {
     if (!mode) return;
     if (items.length === 0) {
@@ -81,7 +157,17 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   }, [mode, items]);
 
   useEffect(() => {
-    if (!mode || !selectedKey) {
+    if (mode !== 'authors') return;
+    setAuthorImageQuery(selectedKey);
+    setAuthorImageSearchTerm(selectedKey);
+  }, [mode, selectedKey]);
+
+  const imageLookupKey = mode === 'authors'
+    ? (authorImageSearchTerm.trim() || selectedKey)
+    : selectedKey;
+
+  useEffect(() => {
+    if (!mode || !imageLookupKey) {
       setImages([]);
       setImagesError(null);
       return;
@@ -91,7 +177,7 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
     setIsImagesLoading(true);
     setImagesError(null);
 
-    fetchNbCatalogImages(selectedKey, 8)
+    fetchNbCatalogImages(imageLookupKey, 8)
       .then((result) => {
         if (cancelled) return;
         setImages(result);
@@ -110,7 +196,7 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [mode, selectedKey]);
+  }, [mode, imageLookupKey]);
 
   if (!mode) return null;
 
@@ -118,12 +204,18 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   const hasRows = items.length > 0;
 
   return (
-    <div
-      className="entity-panel"
-      style={{ zIndex: activeWindow === 'entity' ? 2600 : 1800 }}
-      onMouseDown={() => setActiveWindow('entity')}
+    <Rnd
+      default={{ x: defaultPosition?.x ?? 80, y: defaultPosition?.y ?? 24, width: 760, height: 560 }}
+      minWidth={520}
+      minHeight={360}
+      dragHandleClassName="drag-handle"
+      className="entity-panel-rnd"
+      style={{ zIndex: activeWindow === windowKey ? 2600 : 1800 }}
+      onDragStart={() => setActiveWindow(windowKey)}
+      onResizeStart={() => setActiveWindow(windowKey)}
     >
-      <div className="entity-panel-header">
+      <div className="entity-panel">
+      <div className="entity-panel-header drag-handle">
         <h3>
           <i className={mode === 'authors' ? 'fas fa-user-edit' : 'fas fa-map-marker-alt'}></i>
           {title}
@@ -148,6 +240,128 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
         </button>
       </div>
 
+      {mode === 'places' && activeTab === 'list' ? (
+        <div className="entity-places-layout">
+          <div className="entity-places-toolbar">
+            <input
+              className="entity-search-input"
+              placeholder="Søk sted (historisk eller moderne)..."
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+            />
+            <button
+              type="button"
+              className={`entity-action ${sampleEnabled ? 'active' : ''}`}
+              onClick={() => setSampleEnabled((v) => !v)}
+            >
+              {sampleEnabled ? 'Sample på' : 'Sample av'}
+            </button>
+            {sampleEnabled && (
+              <>
+                <select
+                  className="entity-select"
+                  value={sampleSize}
+                  onChange={(e) => setSampleSize(Number(e.target.value))}
+                >
+                  <option value={200}>200</option>
+                  <option value={500}>500</option>
+                  <option value={1000}>1000</option>
+                </select>
+                <button type="button" className="entity-action" onClick={() => setSampleSeed((s) => s + 1)}>
+                  Ny sample
+                </button>
+              </>
+            )}
+            <select
+              className="entity-select"
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            >
+              <option value={50}>50 / side</option>
+              <option value={100}>100 / side</option>
+              <option value={200}>200 / side</option>
+            </select>
+          </div>
+
+          <div className="entity-places-meta">
+            Viser {placePageStart.toLocaleString()}-{placePageEnd.toLocaleString()} av {placeRowsView.length.toLocaleString()}
+            {sampleEnabled && placeRows.length > sampleSize
+              ? ` (sample fra ${placeRows.length.toLocaleString()})`
+              : ` (totalt ${placeRows.length.toLocaleString()})`}
+          </div>
+
+          <div className="entity-places-table-wrap">
+            <table className="entity-places-table">
+              <thead>
+                <tr>
+                  <th onClick={() => {
+                    if (placeSortKey === 'token') setPlaceSortDir(placeSortDir === 'asc' ? 'desc' : 'asc');
+                    else { setPlaceSortKey('token'); setPlaceSortDir('asc'); }
+                  }}>
+                    Historisk navn {placeSortKey === 'token' ? (placeSortDir === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th onClick={() => {
+                    if (placeSortKey === 'name') setPlaceSortDir(placeSortDir === 'asc' ? 'desc' : 'asc');
+                    else { setPlaceSortKey('name'); setPlaceSortDir('asc'); }
+                  }}>
+                    Moderne {placeSortKey === 'name' ? (placeSortDir === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th onClick={() => {
+                    if (placeSortKey === 'doc_count') setPlaceSortDir(placeSortDir === 'asc' ? 'desc' : 'asc');
+                    else { setPlaceSortKey('doc_count'); setPlaceSortDir('desc'); }
+                  }}>
+                    Antall bøker {placeSortKey === 'doc_count' ? (placeSortDir === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th onClick={() => {
+                    if (placeSortKey === 'frequency') setPlaceSortDir(placeSortDir === 'asc' ? 'desc' : 'asc');
+                    else { setPlaceSortKey('frequency'); setPlaceSortDir('desc'); }
+                  }}>
+                    Antall mentions {placeSortKey === 'frequency' ? (placeSortDir === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {placePageRows.map((place) => (
+                  <tr key={place.id} className={selectedKey === place.token ? 'active' : ''}>
+                    <td>{place.token}</td>
+                    <td>{place.name || '-'}</td>
+                    <td>{place.doc_count.toLocaleString()}</td>
+                    <td>{place.frequency.toLocaleString()}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="entity-row-action"
+                        onClick={() => {
+                          setSelectedKey(place.token);
+                          onSelectPlace(place.token);
+                        }}
+                      >
+                        Vis
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {placePageRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="entity-empty">Ingen steder i dette utvalget.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="entity-pagination">
+            <button type="button" onClick={() => setPlacePage((p) => Math.max(1, p - 1))} disabled={placePage <= 1}>
+              Forrige
+            </button>
+            <span>Side {placePage} / {placeTotalPages}</span>
+            <button type="button" onClick={() => setPlacePage((p) => Math.min(placeTotalPages, p + 1))} disabled={placePage >= placeTotalPages}>
+              Neste
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className={`entity-panel-body ${activeTab === 'list' ? 'list-only' : ''}`}>
         <div className="entity-list">
           {!hasRows ? (
@@ -170,13 +384,36 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
 
         <div className="entity-media">
           <div className="entity-media-header">
-            <strong>{selectedKey || 'Velg en rad'}</strong>
+            <strong>{(mode === 'authors' ? imageLookupKey : selectedKey) || 'Velg en rad'}</strong>
             {mode === 'places' && selectedKey && (
               <button className="entity-action" onClick={() => onSelectPlace(selectedKey)}>
                 Vis i kart
               </button>
             )}
           </div>
+
+          {mode === 'authors' && activeTab === 'images' && (
+            <div className="entity-image-search">
+              <input
+                className="entity-search-input"
+                placeholder="Søk bilder (forfatter/navn)..."
+                value={authorImageQuery}
+                onChange={(e) => setAuthorImageQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setAuthorImageSearchTerm(authorImageQuery.trim() || selectedKey);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="entity-action"
+                onClick={() => setAuthorImageSearchTerm(authorImageQuery.trim() || selectedKey)}
+              >
+                Søk bilder
+              </button>
+            </div>
+          )}
 
           {isImagesLoading && <div className="entity-empty">Laster IIIF-bilder...</div>}
           {!isImagesLoading && imagesError && <div className="entity-empty">{imagesError}</div>}
@@ -207,6 +444,8 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      )}
+      </div>
+    </Rnd>
   );
 };

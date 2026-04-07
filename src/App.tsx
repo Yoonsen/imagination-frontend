@@ -27,8 +27,10 @@ function App() {
     setActiveWindow
   } = useCorpus();
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
-  const [inspectorMode, setInspectorMode] = useState<'authors' | 'places' | null>(null);
-  const [inspectorTab, setInspectorTab] = useState<'list' | 'images'>('list');
+  const [isAuthorsInspectorOpen, setIsAuthorsInspectorOpen] = useState(false);
+  const [authorsInspectorTab, setAuthorsInspectorTab] = useState<'list' | 'images'>('list');
+  const [isPlacesInspectorOpen, setIsPlacesInspectorOpen] = useState(false);
+  const [placesInspectorTab, setPlacesInspectorTab] = useState<'list' | 'images'>('list');
 
   return (
     <div className="app-shell">
@@ -106,40 +108,103 @@ function App() {
             setActiveWindow('browse');
           }
         }}
-        onAuthorsClick={() => {
-          setInspectorMode('authors');
-          setInspectorTab('images');
-          setActiveWindow('entity');
+        onAuthorsDefaultClick={() => {
+          if (isAuthorsInspectorOpen && activeWindow === 'entityAuthors' && authorsInspectorTab === 'list') {
+            setIsAuthorsInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsAuthorsInspectorOpen(true);
+            setAuthorsInspectorTab('list');
+            setActiveWindow('entityAuthors');
+          }
+        }}
+        onAuthorsListClick={() => {
+          if (isAuthorsInspectorOpen && activeWindow === 'entityAuthors' && authorsInspectorTab === 'list') {
+            setIsAuthorsInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsAuthorsInspectorOpen(true);
+            setAuthorsInspectorTab('list');
+            setActiveWindow('entityAuthors');
+          }
+        }}
+        onAuthorsImagesClick={() => {
+          if (isAuthorsInspectorOpen && activeWindow === 'entityAuthors' && authorsInspectorTab === 'images') {
+            setIsAuthorsInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsAuthorsInspectorOpen(true);
+            setAuthorsInspectorTab('images');
+            setActiveWindow('entityAuthors');
+          }
         }}
         onPlacesDefaultClick={() => {
-          setInspectorMode('places');
-          setInspectorTab('list');
-          setActiveWindow('entity');
+          if (isPlacesInspectorOpen && activeWindow === 'entityPlaces' && placesInspectorTab === 'list') {
+            setIsPlacesInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsPlacesInspectorOpen(true);
+            setPlacesInspectorTab('list');
+            setActiveWindow('entityPlaces');
+          }
         }}
         onPlacesListClick={() => {
-          setInspectorMode('places');
-          setInspectorTab('list');
-          setActiveWindow('entity');
+          if (isPlacesInspectorOpen && activeWindow === 'entityPlaces' && placesInspectorTab === 'list') {
+            setIsPlacesInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsPlacesInspectorOpen(true);
+            setPlacesInspectorTab('list');
+            setActiveWindow('entityPlaces');
+          }
         }}
         onPlacesImagesClick={() => {
-          setInspectorMode('places');
-          setInspectorTab('images');
-          setActiveWindow('entity');
+          if (isPlacesInspectorOpen && activeWindow === 'entityPlaces' && placesInspectorTab === 'images') {
+            setIsPlacesInspectorOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsPlacesInspectorOpen(true);
+            setPlacesInspectorTab('images');
+            setActiveWindow('entityPlaces');
+          }
         }}
       />
       <div className="workspace-zone">
         <CorpusBuilderCard />
         <VisualsCard />
         <CorpusBrowseTable />
-        <EntityInspectorPanel
-          mode={inspectorMode}
-          initialTab={inspectorTab}
-          onClose={() => setInspectorMode(null)}
-          onSelectPlace={(token) => {
-            setSelectedPlace(token);
-            setActiveWindow('summary');
-          }}
-        />
+        {isAuthorsInspectorOpen && (
+          <EntityInspectorPanel
+            mode="authors"
+            windowKey="entityAuthors"
+            defaultPosition={{ x: 80, y: 24 }}
+            initialTab={authorsInspectorTab}
+            onClose={() => {
+              setIsAuthorsInspectorOpen(false);
+              if (activeWindow === 'entityAuthors') setActiveWindow(null);
+            }}
+            onSelectPlace={(token) => {
+              setSelectedPlace(token);
+              setActiveWindow('summary');
+            }}
+          />
+        )}
+        {isPlacesInspectorOpen && (
+          <EntityInspectorPanel
+            mode="places"
+            windowKey="entityPlaces"
+            defaultPosition={{ x: 180, y: 90 }}
+            initialTab={placesInspectorTab}
+            onClose={() => {
+              setIsPlacesInspectorOpen(false);
+              if (activeWindow === 'entityPlaces') setActiveWindow(null);
+            }}
+            onSelectPlace={(token) => {
+              setSelectedPlace(token);
+              setActiveWindow('summary');
+            }}
+          />
+        )}
         <PlaceSummaryCard token={selectedPlace} onClose={() => setSelectedPlace(null)} />
       </div>
 

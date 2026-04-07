@@ -53,7 +53,6 @@ export const CorpusBrowseTable: React.FC = () => {
             default={{ x: 50, y: 50, width: 800, height: 500 }}
             minWidth={400}
             minHeight={300}
-            bounds="parent"
             cancel=".no-drag"
             className="corpus-browse-table-rnd"
             style={{ zIndex: activeWindow === 'browse' ? 2600 : 1700 }}

@@ -23,7 +23,6 @@ export const VisualsCard: React.FC = () => {
     <Rnd
       default={{ x: 20, y: 20, width: 320, height: 'auto' }}
       minWidth={280}
-      bounds="parent"
       cancel=".no-drag"
       className="visuals-card"
       style={{ zIndex: activeWindow === 'visuals' ? 2600 : 1750 }}

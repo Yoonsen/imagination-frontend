@@ -218,7 +218,6 @@ export const CorpusBuilderCard: React.FC = () => {
         <Rnd
             default={{ x: 30, y: 30, width: 340, height: 'auto' }}
             minWidth={300}
-            bounds="parent"
             cancel=".no-drag"
             className="corpus-builder-card"
             style={{ zIndex: activeWindow === 'builder' ? 2600 : 1700 }}

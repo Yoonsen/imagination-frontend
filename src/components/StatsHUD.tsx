@@ -6,7 +6,9 @@ interface StatsHUDProps {
     onBooksDefaultClick: () => void;
     onBooksCorpusBuilderClick: () => void;
     onBooksTableClick: () => void;
-    onAuthorsClick: () => void;
+    onAuthorsDefaultClick: () => void;
+    onAuthorsListClick: () => void;
+    onAuthorsImagesClick: () => void;
     onPlacesDefaultClick: () => void;
     onPlacesListClick: () => void;
     onPlacesImagesClick: () => void;
@@ -16,7 +18,9 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
     onBooksDefaultClick,
     onBooksCorpusBuilderClick,
     onBooksTableClick,
-    onAuthorsClick,
+    onAuthorsDefaultClick,
+    onAuthorsListClick,
+    onAuthorsImagesClick,
     onPlacesDefaultClick,
     onPlacesListClick,
     onPlacesImagesClick
@@ -83,8 +87,12 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
                     </button>
                     {openMenu === 'books' && (
                         <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                            <button onClick={() => { onBooksCorpusBuilderClick(); setOpenMenu(null); }}>Corpus Builder</button>
-                            <button onClick={() => { onBooksTableClick(); setOpenMenu(null); }}>Vis tabell</button>
+                            <button type="button" onClick={() => { onBooksCorpusBuilderClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-tools"></i> Corpus Builder
+                            </button>
+                            <button type="button" onClick={() => { onBooksTableClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-list"></i> Vis tabell
+                            </button>
                         </div>
                     )}
                 </div>
@@ -93,7 +101,7 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
                     onMouseEnter={() => openMenuNow('authors')}
                     onMouseLeave={scheduleClose}
                 >
-                    <button className="chip chip-button" onClick={onAuthorsClick} title="Åpne forfatterfunksjoner">
+                    <button className="chip chip-button" onClick={onAuthorsDefaultClick} title="Åpne forfatterfunksjoner">
                         <i className="fas fa-user-edit"></i>
                         <span className="chip-text">
                             <span className="chip-value">{stats.authors.toLocaleString()}</span> Forfattere
@@ -104,7 +112,12 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
                     </button>
                     {openMenu === 'authors' && (
                         <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                            <button onClick={() => { onAuthorsClick(); setOpenMenu(null); }}>Forfatterliste og bilder</button>
+                            <button type="button" onClick={() => { onAuthorsListClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-list"></i> Forfatterliste
+                            </button>
+                            <button type="button" onClick={() => { onAuthorsImagesClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-camera"></i> Forfatterbilder (IIIF)
+                            </button>
                         </div>
                     )}
                 </div>
@@ -125,8 +138,12 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
                     </button>
                     {openMenu === 'places' && (
                         <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                            <button onClick={() => { onPlacesListClick(); setOpenMenu(null); }}>Interaktiv liste</button>
-                            <button onClick={() => { onPlacesImagesClick(); setOpenMenu(null); }}>Bilder (IIIF)</button>
+                            <button type="button" onClick={() => { onPlacesListClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-list"></i> Interaktiv liste
+                            </button>
+                            <button type="button" onClick={() => { onPlacesImagesClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-camera"></i> Bilder (IIIF)
+                            </button>
                         </div>
                     )}
                 </div>

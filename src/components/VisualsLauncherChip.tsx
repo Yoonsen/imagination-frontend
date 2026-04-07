@@ -38,12 +38,15 @@ export const VisualsLauncherChip: React.FC<VisualsLauncherChipProps> = ({
       }}
       onMouseLeave={scheduleClose}
     >
-      <button className="chip chip-button visuals-launcher-chip" onClick={onVisualsDefaultClick} title="Åpne visualiseringer">
+      <button
+        className="chip chip-button visuals-launcher-chip"
+        onClick={() => {
+          cancelClose();
+          setIsOpen((open) => !open);
+        }}
+        title="Åpne visuals-meny"
+      >
         <i className="fas fa-layer-group"></i>
-        <span className="chip-text">Visuals</span>
-        <span className="chip-caret" onClick={(e) => { e.stopPropagation(); setIsOpen((open) => !open); }}>
-          <i className="fas fa-chevron-down"></i>
-        </span>
       </button>
 
       {isOpen && (

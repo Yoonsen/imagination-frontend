@@ -38,8 +38,10 @@ interface CorpusContextType {
   setIsCorpusBuilderOpen: (val: boolean) => void;
   isVisualsOpen: boolean;
   setIsVisualsOpen: (val: boolean) => void;
-  activeWindow: 'builder' | 'browse' | 'visuals' | 'entityAuthors' | 'entityPlaces' | 'summary' | null;
-  setActiveWindow: (window: 'builder' | 'browse' | 'visuals' | 'entityAuthors' | 'entityPlaces' | 'summary' | null) => void;
+  isSettingsOpen: boolean;
+  setIsSettingsOpen: (val: boolean) => void;
+  activeWindow: 'builder' | 'browse' | 'visuals' | 'settings' | 'entityAuthors' | 'entityPlaces' | 'summary' | null;
+  setActiveWindow: (window: 'builder' | 'browse' | 'visuals' | 'settings' | 'entityAuthors' | 'entityPlaces' | 'summary' | null) => void;
   // Map properties
   places: PlacePoint[];
   totalPlaces: number;
@@ -52,6 +54,8 @@ interface CorpusContextType {
   setDownlightPercentile: (val: number) => void;
   lowFreqGreenStrength: number;
   setLowFreqGreenStrength: (val: number) => void;
+  maxPlacesInView: number;
+  setMaxPlacesInView: (val: number) => void;
 }
 
 const CorpusContext = createContext<CorpusContextType | undefined>(undefined);
@@ -64,7 +68,8 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isBrowseTableOpen, setIsBrowseTableOpen] = useState(false);
   const [isCorpusBuilderOpen, setIsCorpusBuilderOpen] = useState(false);
   const [isVisualsOpen, setIsVisualsOpen] = useState(false);
-  const [activeWindow, setActiveWindow] = useState<'builder' | 'browse' | 'visuals' | 'entityAuthors' | 'entityPlaces' | 'summary' | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeWindow, setActiveWindow] = useState<'builder' | 'browse' | 'visuals' | 'settings' | 'entityAuthors' | 'entityPlaces' | 'summary' | null>(null);
   
   const [places, setPlaces] = useState<PlacePoint[]>([]);
   const [totalPlaces, setTotalPlaces] = useState<number>(0);
@@ -73,6 +78,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [downlightColorMode, setDownlightColorMode] = useState<'red' | 'blue'>('blue');
   const [downlightPercentile, setDownlightPercentile] = useState<number>(0);
   const [lowFreqGreenStrength, setLowFreqGreenStrength] = useState<number>(0);
+  const [maxPlacesInView, setMaxPlacesInView] = useState<number>(5000);
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://api.nb.no/dhlab/imag';
   const LEGACY_API_URL = import.meta.env.VITE_LEGACY_API_URL || 'https://api.nb.no/dhlab';
@@ -105,7 +111,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     fetch(`${API_URL}/api/places`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dhlabids: activeDhlabids, maxPlaces: 5000 })
+        body: JSON.stringify({ dhlabids: activeDhlabids, maxPlaces: maxPlacesInView })
     }).then(res => {
       if (!res.ok) throw new Error("Failed to fetch places");
       return res.json();
@@ -116,7 +122,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           setIsPlacesLoading(false); 
       })
       .catch(err => { console.error(err); setIsPlacesLoading(false); });
-  }, [activeDhlabids, API_URL]);
+  }, [activeDhlabids, API_URL, maxPlacesInView]);
 
   const activeBooksMetadata = useMemo(() => {
     const activeSet = new Set(activeDhlabids);
@@ -139,6 +145,8 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setIsCorpusBuilderOpen,
       isVisualsOpen,
       setIsVisualsOpen,
+      isSettingsOpen,
+      setIsSettingsOpen,
       activeWindow,
       setActiveWindow,
       places,
@@ -151,7 +159,9 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       downlightPercentile,
       setDownlightPercentile,
       lowFreqGreenStrength,
-      setLowFreqGreenStrength
+      setLowFreqGreenStrength,
+      maxPlacesInView,
+      setMaxPlacesInView
     }}>
       {children}
     </CorpusContext.Provider>

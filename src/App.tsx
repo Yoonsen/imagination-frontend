@@ -10,6 +10,8 @@ import { EntityInspectorPanel } from './components/EntityInspectorPanel'
 import { Omnibox } from './components/Omnibox'
 import { VisualsCard } from './components/VisualsCard'
 import { VisualsLauncherChip } from './components/VisualsLauncherChip'
+import { SettingsLauncherChip } from './components/SettingsLauncherChip'
+import { SettingsCard } from './components/SettingsCard'
 import { useCorpus } from './context/CorpusContext'
 import './index.css'
 
@@ -21,6 +23,8 @@ function App() {
     isCorpusBuilderOpen,
     setIsVisualsOpen,
     isVisualsOpen,
+    setIsSettingsOpen,
+    isSettingsOpen,
     setMapVisualMode,
     mapVisualMode,
     activeWindow,
@@ -83,6 +87,17 @@ function App() {
           setMapVisualMode('heatmap-all');
           setIsVisualsOpen(true);
           setActiveWindow('visuals');
+        }}
+      />
+      <SettingsLauncherChip
+        onSettingsPanelClick={() => {
+          if (isSettingsOpen && activeWindow === 'settings') {
+            setIsSettingsOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsSettingsOpen(true);
+            setActiveWindow('settings');
+          }
         }}
       />
       <StatsHUD
@@ -177,6 +192,7 @@ function App() {
       <div className="workspace-zone">
         <CorpusBuilderCard />
         <VisualsCard />
+        <SettingsCard />
         <CorpusBrowseTable />
         {isAuthorsInspectorOpen && (
           <EntityInspectorPanel

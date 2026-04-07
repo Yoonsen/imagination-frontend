@@ -1,0 +1,56 @@
+.settings-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.settings-title {
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-controls button {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.settings-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-section label {
+  display: block;
+  font-size: 0.82rem;
+  color: #334155;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.settings-help {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 0.74rem;
+}

@@ -21,6 +21,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
         downlightPercentile,
         downlightColorMode,
         lowFreqGreenStrength,
+        markerSizeScale,
         temporalEnabled,
         temporalCutoffYear,
         temporalMode
@@ -88,6 +89,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
                 const norm = (Math.log1p(place.frequency) - logMin) / (logMax - logMin);
                 radius = 6 + norm * 18;
             }
+            radius = Math.max(2, Math.min(60, radius * (markerSizeScale / 100)));
             
             const isDownlighted = place.frequency <= thresholdFreq;
             const firstYear = firstYearByToken?.get(place.token);
@@ -159,6 +161,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
         downlightPercentile,
         downlightColorMode,
         lowFreqGreenStrength,
+        markerSizeScale,
         temporalEnabled,
         temporalCutoffYear,
         temporalMode,

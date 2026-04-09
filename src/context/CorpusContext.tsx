@@ -56,6 +56,8 @@ interface CorpusContextType {
   setDownlightPercentile: (val: number) => void;
   lowFreqGreenStrength: number;
   setLowFreqGreenStrength: (val: number) => void;
+  markerSizeScale: number;
+  setMarkerSizeScale: (val: number) => void;
   maxPlacesInView: number;
   setMaxPlacesInView: (val: number) => void;
   temporalEnabled: boolean;
@@ -87,6 +89,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [downlightColorMode, setDownlightColorMode] = useState<'red' | 'blue'>('blue');
   const [downlightPercentile, setDownlightPercentile] = useState<number>(0);
   const [lowFreqGreenStrength, setLowFreqGreenStrength] = useState<number>(0);
+  const [markerSizeScale, setMarkerSizeScale] = useState<number>(100);
   const [maxPlacesInView, setMaxPlacesInView] = useState<number>(5000);
   const [temporalEnabled, setTemporalEnabled] = useState<boolean>(false);
   const [temporalCutoffYear, setTemporalCutoffYear] = useState<number | null>(null);
@@ -174,6 +177,8 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDownlightPercentile,
       lowFreqGreenStrength,
       setLowFreqGreenStrength,
+      markerSizeScale,
+      setMarkerSizeScale,
       maxPlacesInView,
       setMaxPlacesInView,
       temporalEnabled,

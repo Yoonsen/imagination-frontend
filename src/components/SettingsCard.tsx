@@ -13,13 +13,15 @@ export const SettingsCard: React.FC = () => {
     activeWindow,
     setActiveWindow,
     maxPlacesInView,
-    setMaxPlacesInView
+    setMaxPlacesInView,
+    markerSizeScale,
+    setMarkerSizeScale
   } = useCorpus();
   const { layout, onDragStop, onResizeStop } = useWindowLayout({
     key: 'settings',
-    defaultLayout: { x: 20, y: 260, width: 320, height: 280 },
+    defaultLayout: { x: 20, y: 260, width: 320, height: 360 },
     minWidth: 280,
-    minHeight: 220
+    minHeight: 260
   });
 
   if (!isSettingsOpen) return null;
@@ -29,7 +31,7 @@ export const SettingsCard: React.FC = () => {
       size={{ width: layout.width, height: layout.height }}
       position={{ x: layout.x, y: layout.y }}
       minWidth={280}
-      minHeight={220}
+      minHeight={260}
       cancel=".no-drag"
       dragHandleClassName="drag-handle"
       className="settings-card"
@@ -66,6 +68,24 @@ export const SettingsCard: React.FC = () => {
           </div>
           <small className="settings-help">
             Styrer hvor mange steder som hentes inn i standard visning.
+          </small>
+        </div>
+
+        <div className="settings-section">
+          <label>Størrelse på stedsmarkører ({markerSizeScale}%)</label>
+          <div style={{ padding: '0 8px' }}>
+            <Slider
+              min={20}
+              max={200}
+              step={5}
+              value={markerSizeScale}
+              onChange={(val) => setMarkerSizeScale(val as number)}
+              trackStyle={[{ backgroundColor: '#4B6CB7' }]}
+              handleStyle={[{ borderColor: '#4B6CB7', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }]}
+            />
+          </div>
+          <small className="settings-help">
+            Skalerer radius på markører i kartvisning.
           </small>
         </div>
       </div>

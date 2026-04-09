@@ -14,7 +14,9 @@ import { SettingsLauncherChip } from './components/SettingsLauncherChip'
 import { SettingsCard } from './components/SettingsCard'
 import { TemporalCard } from './components/TemporalCard'
 import { GeoConcordanceCard } from './components/GeoConcordanceCard'
+import { BookSequenceCard } from './components/BookSequenceCard'
 import { useCorpus } from './context/CorpusContext'
+import type { GeoSequenceRow } from './utils/geoApi'
 import './index.css'
 
 interface SelectedPlace {
@@ -45,6 +47,19 @@ function App() {
   const [isPlacesInspectorOpen, setIsPlacesInspectorOpen] = useState(false);
   const [placesInspectorTab, setPlacesInspectorTab] = useState<'list' | 'images'>('list');
   const [isTemporalOpen, setIsTemporalOpen] = useState(false);
+  const [isBookSequenceOpen, setIsBookSequenceOpen] = useState(false);
+  const [sequenceBookId, setSequenceBookId] = useState<number | null>(null);
+  const [sequenceRows, setSequenceRows] = useState<GeoSequenceRow[]>([]);
+  const [sequenceDimOthers, setSequenceDimOthers] = useState(true);
+  const [sequenceShowLine, setSequenceShowLine] = useState(false);
+  const [sequenceShortStepsMode, setSequenceShortStepsMode] = useState(true);
+  const [sequenceMaxStepKm, setSequenceMaxStepKm] = useState(350);
+
+  const openBookSequenceForBook = (bookId: number) => {
+    setSequenceBookId(bookId);
+    setIsBookSequenceOpen(true);
+    setActiveWindow('bookSequence');
+  };
 
   return (
     <div className="app-shell">
@@ -61,6 +76,13 @@ function App() {
             onSelectPlace={(place) => {
               setSelectedPlace(place);
               setActiveWindow('summary');
+            }}
+            bookSequence={{
+              rows: sequenceRows,
+              dimOthers: sequenceDimOthers,
+              showLine: sequenceShowLine,
+              shortStepsMode: sequenceShortStepsMode,
+              maxStepKm: sequenceMaxStepKm
             }}
           />
         )}
@@ -207,6 +229,15 @@ function App() {
             setActiveWindow('geoConcordance');
           }
         }}
+        onPlacesBookSequenceClick={() => {
+          if (isBookSequenceOpen && activeWindow === 'bookSequence') {
+            setIsBookSequenceOpen(false);
+            setActiveWindow(null);
+          } else {
+            setIsBookSequenceOpen(true);
+            setActiveWindow('bookSequence');
+          }
+        }}
         onYearClick={() => {
           if (isTemporalOpen && activeWindow === 'temporal') {
             setIsTemporalOpen(false);
@@ -228,6 +259,25 @@ function App() {
             if (activeWindow === 'geoConcordance') setActiveWindow(null);
           }}
         />
+        <BookSequenceCard
+          isOpen={isBookSequenceOpen}
+          onClose={() => {
+            setIsBookSequenceOpen(false);
+            if (activeWindow === 'bookSequence') setActiveWindow(null);
+          }}
+          selectedBookId={sequenceBookId}
+          onSelectBookId={setSequenceBookId}
+          sequenceRows={sequenceRows}
+          onSetSequenceRows={setSequenceRows}
+          dimOthers={sequenceDimOthers}
+          onSetDimOthers={setSequenceDimOthers}
+          showLine={sequenceShowLine}
+          onSetShowLine={setSequenceShowLine}
+          shortStepsMode={sequenceShortStepsMode}
+          onSetShortStepsMode={setSequenceShortStepsMode}
+          maxStepKm={sequenceMaxStepKm}
+          onSetMaxStepKm={setSequenceMaxStepKm}
+        />
         <TemporalCard
           isOpen={isTemporalOpen}
           onClose={() => {
@@ -235,7 +285,7 @@ function App() {
             if (activeWindow === 'temporal') setActiveWindow(null);
           }}
         />
-        <CorpusBrowseTable />
+        <CorpusBrowseTable onShowBookSequence={openBookSequenceForBook} />
         {isAuthorsInspectorOpen && (
           <EntityInspectorPanel
             mode="authors"
@@ -268,7 +318,12 @@ function App() {
             }}
           />
         )}
-        <PlaceSummaryCard token={selectedPlace?.token || null} placeId={selectedPlace?.placeId} onClose={() => setSelectedPlace(null)} />
+        <PlaceSummaryCard
+          token={selectedPlace?.token || null}
+          placeId={selectedPlace?.placeId}
+          onClose={() => setSelectedPlace(null)}
+          onShowBookSequence={openBookSequenceForBook}
+        />
       </div>
 
     </div>

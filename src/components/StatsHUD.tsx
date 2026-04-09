@@ -13,6 +13,7 @@ interface StatsHUDProps {
     onPlacesListClick: () => void;
     onPlacesImagesClick: () => void;
     onPlacesGeoConcordanceClick: () => void;
+    onPlacesBookSequenceClick: () => void;
     onYearClick: () => void;
 }
 
@@ -27,6 +28,7 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
     onPlacesListClick,
     onPlacesImagesClick,
     onPlacesGeoConcordanceClick,
+    onPlacesBookSequenceClick,
     onYearClick
 }) => {
     const {
@@ -155,6 +157,9 @@ export const StatsHUD: React.FC<StatsHUDProps> = ({
                             </button>
                             <button type="button" onClick={() => { onPlacesGeoConcordanceClick(); setOpenMenu(null); }}>
                                 <i className="fas fa-stream"></i> Geo-konkordans
+                            </button>
+                            <button type="button" onClick={() => { onPlacesBookSequenceClick(); setOpenMenu(null); }}>
+                                <i className="fas fa-route"></i> Bokforløp
                             </button>
                         </div>
                     )}

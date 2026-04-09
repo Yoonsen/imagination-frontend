@@ -7,7 +7,11 @@ import './CorpusBrowseTable.css';
 
 type SortKey = keyof BookMetadata;
 
-export const CorpusBrowseTable: React.FC = () => {
+interface CorpusBrowseTableProps {
+    onShowBookSequence?: (bookId: number) => void;
+}
+
+export const CorpusBrowseTable: React.FC<CorpusBrowseTableProps> = ({ onShowBookSequence }) => {
     const { activeBooksMetadata, isBrowseTableOpen, setIsBrowseTableOpen, activeWindow, setActiveWindow } = useCorpus();
     const [sortKey, setSortKey] = useState<SortKey>('author');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -116,6 +120,7 @@ export const CorpusBrowseTable: React.FC = () => {
                                     {renderHeader('Kategori', 'category')}
                                     {renderHeader('Steder', 'unique_places')}
                                     {renderHeader('Mentions', 'total_mentions')}
+                                    <th title="Vis bokforløp">Forløp</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -128,11 +133,21 @@ export const CorpusBrowseTable: React.FC = () => {
                                         <td>{b.category || '-'}</td>
                                         <td style={{ textAlign: 'right' }}>{b.unique_places?.toLocaleString() || '0'}</td>
                                         <td style={{ textAlign: 'right' }}>{b.total_mentions?.toLocaleString() || '0'}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                className="table-route-btn"
+                                                type="button"
+                                                title="Vis bokforløp på kart"
+                                                onClick={() => onShowBookSequence?.(b.dhlabid)}
+                                            >
+                                                <i className="fas fa-route"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                                 {sortedBooks.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="empty-state">Ingen bøker i aktivt korpus</td>
+                                        <td colSpan={8} className="empty-state">Ingen bøker i aktivt korpus</td>
                                     </tr>
                                 )}
                             </tbody>

@@ -9,6 +9,7 @@ interface PlaceSummaryCardProps {
     token: string | null;
     placeId?: string | null;
     onClose: () => void;
+    onShowBookSequence?: (bookId: number) => void;
 }
 
 interface PlaceBookDetail {
@@ -27,30 +28,28 @@ interface ConcordanceHit {
     frag: string;
 }
 
-function toGeoLookupId(placeId: string | null | undefined): string | null {
-    if (!placeId) return null;
-    const normalized = placeId.trim();
-    if (!normalized) return null;
-    const match = normalized.match(/^(geonames|internal):(.+)$/i);
-    if (match && match[2]) return match[2];
-    return normalized;
-}
-
-function buildGeoLookupCandidates(placeId: string | null | undefined): string[] {
+function buildGeoTermCandidates(placeId: string | null | undefined): string[] {
     if (!placeId) return [];
     const raw = placeId.trim();
     if (!raw) return [];
-    const stripped = toGeoLookupId(raw);
-    const candidates = [stripped, raw].filter((value): value is string => Boolean(value && value.trim()));
-    return Array.from(new Set(candidates));
-}
 
-function getKeyType(placeId: string | null | undefined): number | null {
-    if (!placeId) return null;
-    const normalized = placeId.trim().toLowerCase();
-    if (normalized.startsWith('geonames:')) return 1;
-    if (normalized.startsWith('internal:')) return 0;
-    return null;
+    const fullMatch = raw.match(/^#?geo:(geonames|internal):(.+)$/i);
+    if (fullMatch && fullMatch[1] && fullMatch[2]) {
+        const placeType = fullMatch[1].toLowerCase();
+        const placeKey = fullMatch[2].trim();
+        if (!placeKey) return [];
+        return [`#geo:${placeType}:${placeKey}`];
+    }
+
+    const typedMatch = raw.match(/^(geonames|internal):(.+)$/i);
+    if (typedMatch && typedMatch[1] && typedMatch[2]) {
+        const placeType = typedMatch[1].toLowerCase();
+        const placeKey = typedMatch[2].trim();
+        if (!placeKey) return [];
+        return [`#geo:${placeType}:${placeKey}`];
+    }
+
+    return [`#geo:${raw}`];
 }
 
 function extractHits(data: any): ConcordanceHit[] {
@@ -87,8 +86,8 @@ function uniqueHits(hits: ConcordanceHit[]): ConcordanceHit[] {
     return unique;
 }
 
-export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, placeId, onClose }) => {
-    const { activeDhlabids, API_URL, activeWindow, setActiveWindow, places } = useCorpus();
+export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, placeId, onClose, onShowBookSequence }) => {
+    const { activeDhlabids, activeBooksMetadata, API_URL, activeWindow, setActiveWindow, places } = useCorpus();
     const [books, setBooks] = useState<PlaceBookDetail[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [collapsedBooks, setCollapsedBooks] = useState<Record<number, boolean>>({});
@@ -108,6 +107,19 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
         books.forEach((book) => map.set(book.dhlabid, book));
         return map;
     }, [books]);
+    const metadataById = useMemo(() => {
+        const map = new Map<number, { urn: string; author: string | null; year: number | null; title: string | null; category: string | null }>();
+        activeBooksMetadata.forEach((book) => {
+            map.set(book.dhlabid, {
+                urn: book.urn,
+                author: book.author,
+                year: book.year,
+                title: book.title,
+                category: book.category
+            });
+        });
+        return map;
+    }, [activeBooksMetadata]);
     const loadedConcordanceCount = useMemo(
         () => Object.values(bookConcordances).reduce((sum, rows) => sum + rows.length, 0),
         [bookConcordances]
@@ -132,36 +144,116 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
         setBookConcordances({});
         setBookConcordanceLoading({});
         setCollapsedBooks({});
-        fetch(`${API_URL}/api/places/details`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dhlabids: activeDhlabids, token })
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Failed to fetch place details");
-            return res.json();
-        })
-        .then(data => {
-            setBooks(data.books || []);
-            setIsLoading(false);
-        })
-        .catch(err => {
-            console.error(err);
-            setIsLoading(false);
-        });
-    }, [token, activeDhlabids, API_URL]);
+        let cancelled = false;
+        const run = async () => {
+            const fetchBooksFromDetails = async (): Promise<PlaceBookDetail[]> => {
+                const res = await fetch(`${API_URL}/api/places/details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dhlabids: activeDhlabids, token })
+                });
+                if (!res.ok) throw new Error('Failed to fetch place details');
+                const data = await res.json();
+                return data.books || [];
+            };
+
+            const fetchBooksFromGeo = async (): Promise<PlaceBookDetail[]> => {
+                const geoTerms = buildGeoTermCandidates(effectivePlaceId);
+                if (geoTerms.length === 0) return [];
+                for (const geoTerm of geoTerms) {
+                    try {
+                        const res = await fetch(`${API_URL}/or_query`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                terms: [geoTerm],
+                                useFilter: true,
+                                filterIds: activeDhlabids,
+                                totalLimit: 200000,
+                                before: 0,
+                                after: 0,
+                                renderHits: false,
+                                _perf: true
+                            })
+                        });
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        const rows = Array.isArray(data?.rows) ? data.rows : [];
+                        if (rows.length === 0) continue;
+                        const mentionsByBook = new Map<number, number>();
+                        rows.forEach((row: any) => {
+                            const bookId = Number(row?.bookId ?? row?.dhlabid);
+                            if (!Number.isFinite(bookId)) return;
+                            mentionsByBook.set(bookId, (mentionsByBook.get(bookId) || 0) + 1);
+                        });
+                        const out: PlaceBookDetail[] = [];
+                        mentionsByBook.forEach((mentions, dhlabid) => {
+                            const meta = metadataById.get(dhlabid);
+                            out.push({
+                                dhlabid,
+                                urn: meta?.urn || '',
+                                author: meta?.author || null,
+                                year: meta?.year ?? null,
+                                title: meta?.title || null,
+                                category: meta?.category || null,
+                                mentions
+                            });
+                        });
+                        return out;
+                    } catch {
+                        // Try next candidate term.
+                    }
+                }
+                return [];
+            };
+
+            try {
+                const [detailBooks, geoBooks] = await Promise.all([
+                    fetchBooksFromDetails().catch(() => [] as PlaceBookDetail[]),
+                    fetchBooksFromGeo().catch(() => [] as PlaceBookDetail[])
+                ]);
+                if (cancelled) return;
+                const merged = new Map<number, PlaceBookDetail>();
+                [...detailBooks, ...geoBooks].forEach((book) => {
+                    const current = merged.get(book.dhlabid);
+                    if (!current) {
+                        merged.set(book.dhlabid, book);
+                        return;
+                    }
+                    merged.set(book.dhlabid, {
+                        ...current,
+                        mentions: Math.max(current.mentions || 0, book.mentions || 0),
+                        urn: current.urn || book.urn,
+                        author: current.author || book.author,
+                        year: current.year ?? book.year,
+                        title: current.title || book.title,
+                        category: current.category || book.category
+                    });
+                });
+                setBooks([...merged.values()]);
+            } catch (err) {
+                if (!cancelled) console.error(err);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [token, effectivePlaceId, activeDhlabids, metadataById, API_URL]);
 
     const fetchBookConcordance = async (bookId: number) => {
         if (!token) return;
         const resolveHits = async (): Promise<ConcordanceHit[]> => {
-            const geoLookupCandidates = buildGeoLookupCandidates(effectivePlaceId);
-            const keyType = getKeyType(effectivePlaceId);
+            const geoTerms = buildGeoTermCandidates(effectivePlaceId);
             let hits: ConcordanceHit[] = [];
-            if (geoLookupCandidates.length > 0) {
-                for (const candidateId of geoLookupCandidates) {
+            if (geoTerms.length > 0) {
+                for (const geoTerm of geoTerms) {
                     try {
                         const payload: Record<string, unknown> = {
-                            terms: [`#geo:${candidateId}`],
+                            terms: [geoTerm],
                             window: 8,
                             before: 8,
                             after: 8,
@@ -171,7 +263,6 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                             useFilter: true,
                             filterIds: [bookId]
                         };
-                        if (keyType !== null) payload.key_type = keyType;
                         const res = await fetch(`${API_URL}/or_query`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -405,14 +496,26 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                                             </span>
                                         </button>
 
-                                        <a
-                                            className="book-title book-title-link"
-                                            href={toNbLink(book)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            {book.title || 'Uten tittel'}
-                                        </a>
+                                        <div className="book-title-row">
+                                            <a
+                                                className="book-title book-title-link"
+                                                href={toNbLink(book)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                {book.title || 'Uten tittel'}
+                                            </a>
+                                            {onShowBookSequence && (
+                                                <button
+                                                    type="button"
+                                                    className="book-sequence-btn-inline"
+                                                    title="Vis bokforløp på kart"
+                                                    onClick={() => onShowBookSequence(book.dhlabid)}
+                                                >
+                                                    <i className="fas fa-route"></i>
+                                                </button>
+                                            )}
+                                        </div>
                                         {book.category && <div className="book-category">{book.category}</div>}
 
                                         {!collapsed && (

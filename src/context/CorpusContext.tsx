@@ -42,8 +42,8 @@ interface CorpusContextType {
   setIsSettingsOpen: (val: boolean) => void;
   isGeoConcordanceOpen: boolean;
   setIsGeoConcordanceOpen: (val: boolean) => void;
-  activeWindow: 'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'entityAuthors' | 'entityPlaces' | 'summary' | null;
-  setActiveWindow: (window: 'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'entityAuthors' | 'entityPlaces' | 'summary' | null) => void;
+  activeWindow: 'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'bookSequence' | 'entityAuthors' | 'entityPlaces' | 'summary' | null;
+  setActiveWindow: (window: 'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'bookSequence' | 'entityAuthors' | 'entityPlaces' | 'summary' | null) => void;
   // Map properties
   places: PlacePoint[];
   totalPlaces: number;
@@ -80,7 +80,7 @@ export const CorpusProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isVisualsOpen, setIsVisualsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGeoConcordanceOpen, setIsGeoConcordanceOpen] = useState(false);
-  const [activeWindow, setActiveWindow] = useState<'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'entityAuthors' | 'entityPlaces' | 'summary' | null>(null);
+  const [activeWindow, setActiveWindow] = useState<'builder' | 'browse' | 'visuals' | 'settings' | 'temporal' | 'geoConcordance' | 'bookSequence' | 'entityAuthors' | 'entityPlaces' | 'summary' | null>(null);
   
   const [places, setPlaces] = useState<PlacePoint[]>([]);
   const [totalPlaces, setTotalPlaces] = useState<number>(0);

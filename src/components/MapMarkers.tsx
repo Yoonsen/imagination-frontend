@@ -1,16 +1,85 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import { useCorpus } from '../context/CorpusContext';
 import { mixHex } from '../utils/colors';
 import { fetchFirstYearByTokenForCorpus } from '../utils/temporal';
+import type { GeoSequenceRow } from '../utils/geoApi';
 
 interface MapMarkersProps {
     onSelectPlace: (place: { token: string; placeId?: string }) => void;
+    bookSequence?: {
+        rows: GeoSequenceRow[];
+        dimOthers: boolean;
+        showLine: boolean;
+        shortStepsMode: boolean;
+        maxStepKm: number;
+    };
 }
 
 const MAP_MARKER_LIMIT = 1800;
 
-export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
+const normalizeType = (value: unknown): 'geonames' | 'internal' | null => {
+    if (value === 'geonames' || value === 'internal') return value;
+    if (value === 1 || value === '1') return 'geonames';
+    if (value === 0 || value === '0') return 'internal';
+    return null;
+};
+
+const normalizePlaceIdCandidates = (value: unknown): string[] => {
+    if (value === null || value === undefined) return [];
+    const raw = String(value).trim().toLowerCase();
+    if (!raw) return [];
+    const stripped = raw.startsWith('#geo:') ? raw.slice(5) : raw;
+    const candidates = new Set<string>([raw, stripped]);
+    if (/^\d+$/.test(stripped)) {
+        // Numeric ids are usually geonames in current backend conventions.
+        candidates.add(`geonames:${stripped}`);
+    }
+    return [...candidates];
+};
+
+const toCoordKey = (lat: number, lon: number): string => `${lat.toFixed(5)}:${lon.toFixed(5)}`;
+
+const haversineKm = (aLat: number, aLon: number, bLat: number, bLon: number): number => {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(bLat - aLat);
+    const dLon = toRad(bLon - aLon);
+    const aa =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+    return R * c;
+};
+
+const filterByShortSteps = (rows: GeoSequenceRow[], maxStepKm: number): GeoSequenceRow[] => {
+    if (!rows.length) return rows;
+    const filtered: GeoSequenceRow[] = [];
+    let lastCoord: { lat: number; lon: number } | null = null;
+    rows.forEach((row) => {
+        const lat = row.place?.lat;
+        const lon = row.place?.lon;
+        if (typeof lat !== 'number' || typeof lon !== 'number') {
+            // Keep unresolved points so id-based highlight can still work.
+            filtered.push(row);
+            return;
+        }
+        if (!lastCoord) {
+            filtered.push(row);
+            lastCoord = { lat, lon };
+            return;
+        }
+        const jumpKm = haversineKm(lastCoord.lat, lastCoord.lon, lat, lon);
+        if (jumpKm <= maxStepKm) {
+            filtered.push(row);
+            lastCoord = { lat, lon };
+        }
+    });
+    return filtered;
+};
+
+export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSequence }) => {
     const {
         places,
         totalPlaces,
@@ -60,13 +129,43 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
         };
     }, [temporalEnabled, activeBooksMetadata, API_URL, maxPlacesInView, totalPlaces]);
 
-    // Beregn størrelsene iterativt med np.log1p math ekvivalent for React
-    const renderedMarkers = useMemo(() => {
+    const renderedLayers = useMemo(() => {
         if (!temporalMappingReady) return [];
         if (places.length === 0) return [];
         const mapPlaces = [...places]
             .sort((a, b) => b.frequency - a.frequency)
             .slice(0, MAP_MARKER_LIMIT);
+        const mapPlaceById = new Map(
+            mapPlaces
+                .filter(place => typeof place.id === 'string' && place.id.length > 0)
+                .map(place => [String(place.id).toLowerCase(), place] as const)
+        );
+        const rawSequenceRows = bookSequence?.rows || [];
+        const sequenceRows = bookSequence?.shortStepsMode
+            ? filterByShortSteps(rawSequenceRows, Math.max(1, bookSequence?.maxStepKm || 1))
+            : rawSequenceRows;
+        const sequenceIds = new Set<string>();
+        const sequenceCoords = new Set<string>();
+        sequenceRows.forEach((row) => {
+            const normalizedType = normalizeType((row as any).placeKeyType);
+            const keyRaw = (row as any).placeKey;
+            const key = keyRaw === null || keyRaw === undefined ? '' : String(keyRaw).trim();
+            if (normalizedType && key) {
+                sequenceIds.add(`${normalizedType}:${key}`.toLowerCase());
+            }
+            if (typeof (row as any).geonamesId === 'number') {
+                sequenceIds.add(`geonames:${String((row as any).geonamesId)}`.toLowerCase());
+            }
+            if (typeof (row as any).placeId === 'number') {
+                sequenceIds.add(`internal:${String((row as any).placeId)}`.toLowerCase());
+            }
+            const lat = (row as any).place?.lat;
+            const lon = (row as any).place?.lon;
+            if (typeof lat === 'number' && typeof lon === 'number') {
+                sequenceCoords.add(toCoordKey(lat, lon));
+            }
+        });
+        const hasSequence = sequenceIds.size > 0 || sequenceCoords.size > 0;
         
         const frequencies = mapPlaces.map(p => p.frequency);
         const minFreq = Math.min(...frequencies);
@@ -82,7 +181,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
            thresholdFreq = sortedFreqs[pIdx];
         }
 
-        return mapPlaces.map(place => {
+        const markers = mapPlaces.map(place => {
             // Normalisert radius
             let radius = 6;
             if (logMax > logMin) {
@@ -119,17 +218,29 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
             const temporalFill = temporalEnabled && temporalMode === 'color' && (isAfterOnly || isUnknown) ? '#cbd5e1' : activeFill;
             const temporalStroke = temporalEnabled && temporalMode === 'color' && (isAfterOnly || isUnknown) ? '#94a3b8' : activeStroke;
             const temporalOpacity = temporalEnabled && temporalMode === 'color' && (isAfterOnly || isUnknown) ? 0.28 : (downlightColorMode === 'red' ? 0.62 : 0.54);
+            const placeIdCandidates = normalizePlaceIdCandidates(place.id);
+            const inBookSequence = (
+                (hasSequence && placeIdCandidates.some((candidate) => sequenceIds.has(candidate)))
+                || sequenceCoords.has(toCoordKey(place.lat, place.lon))
+            );
+            const shouldDimBySequence = hasSequence && bookSequence?.dimOthers && !inBookSequence;
+            const displayRadius = inBookSequence ? Math.max(3.5, radius * 1.18) : radius;
+            const displayStroke = inBookSequence ? '#facc15' : temporalStroke;
+            const displayFill = inBookSequence ? '#fde047' : temporalFill;
+            const displayOpacity = shouldDimBySequence ? 0.06 : (inBookSequence ? 0.86 : temporalOpacity);
+            const displayWeight = shouldDimBySequence ? 0 : (inBookSequence ? 2.2 : (isDownlighted ? 0 : 1.5));
+            const fallbackFill = shouldDimBySequence ? '#cbd5e1' : dimFill;
 
             return (
                 <CircleMarker
                     key={place.id}
                     center={[place.lat, place.lon]}
-                    radius={radius}
+                    radius={displayRadius}
                     pathOptions={{ 
-                        color: isDownlighted ? 'transparent' : temporalStroke,
-                        fillColor: isDownlighted ? dimFill : temporalFill,
-                        fillOpacity: isDownlighted ? 0.12 : temporalOpacity,
-                        weight: isDownlighted ? 0 : 1.5
+                        color: isDownlighted && !inBookSequence ? 'transparent' : displayStroke,
+                        fillColor: isDownlighted && !inBookSequence ? fallbackFill : displayFill,
+                        fillOpacity: isDownlighted && !inBookSequence ? Math.min(displayOpacity, 0.12) : displayOpacity,
+                        weight: displayWeight
                     }}
                     eventHandlers={{
                         click: () => {
@@ -154,6 +265,33 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
                 </CircleMarker>
             );
         }).filter(Boolean);
+
+        const polylinePoints: [number, number][] = sequenceRows
+            .map((row) => {
+                const normalizedType = normalizeType((row as any).placeKeyType);
+                const key = normalizedType && (row as any).placeKey
+                    ? `${normalizedType}:${String((row as any).placeKey)}`
+                    : '';
+                const lat = row.place?.lat;
+                const lon = row.place?.lon;
+                if (typeof lat === 'number' && typeof lon === 'number') return [lat, lon] as [number, number];
+                const fallback = key ? mapPlaceById.get(key.toLowerCase()) : null;
+                if (fallback) return [fallback.lat, fallback.lon] as [number, number];
+                return null;
+            })
+            .filter((point): point is [number, number] => Array.isArray(point));
+
+        if (!bookSequence?.showLine || polylinePoints.length < 2) {
+            return markers;
+        }
+        return [
+            ...markers,
+            <Polyline
+                key="book-sequence-line"
+                positions={polylinePoints}
+                pathOptions={{ color: '#f59e0b', weight: 3, opacity: 0.8, lineCap: 'round', lineJoin: 'round' }}
+            />
+        ];
     }, [
         places,
         onSelectPlace,
@@ -166,7 +304,8 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
         temporalCutoffYear,
         temporalMode,
         firstYearByToken
-        , temporalMappingReady
+        , temporalMappingReady,
+        bookSequence
     ]);
 
     if (isPlacesLoading || !temporalMappingReady) {
@@ -174,5 +313,5 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace }) => {
         return null;
     }
 
-    return <>{renderedMarkers}</>;
+    return <>{renderedLayers}</>;
 }

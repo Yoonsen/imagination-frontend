@@ -50,6 +50,11 @@ function extractPlaceFromFrag(fragment: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function formatPlaceId(row: GeoRow): string {
+  if (!row.placeKey) return '';
+  return row.placeKeyType === 'geonames' ? row.placeKey : `intern:${row.placeKey}`;
+}
+
 function highlightGeoBracket(fragment: string): string {
   return fragment.replace(/\[([^\]]+)\]/g, (_m, inner: string) => {
     return `[<mark class="geo-place-mark">${inner}</mark>]`;
@@ -201,21 +206,28 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
   const downloadExcel = () => {
     if (rows.length === 0) return;
     try {
-      const freqMap = new Map<string, number>();
+      const freqMap = new Map<string, { sted: string; sted_id: string; freq: number }>();
       const concordanceRows = rows.map((row) => {
         const frag = renderedMap.get(`${row.bookId}:${row.pos}`) || '';
         const placeName = extractPlaceFromFrag(frag) || row.surfaceText || row.placeKey || 'ukjent';
-        freqMap.set(placeName, (freqMap.get(placeName) || 0) + 1);
+        const placeId = formatPlaceId(row);
+        const freqKey = `${placeId}::${placeName}`;
+        const existing = freqMap.get(freqKey);
+        if (existing) {
+          existing.freq += 1;
+        } else {
+          freqMap.set(freqKey, { sted: placeName, sted_id: placeId, freq: 1 });
+        }
         return {
           bok_id: row.bookId,
           pos: row.pos,
           stedsnavn: placeName,
+          stedsid: placeId,
           konk: frag
         };
       });
 
-      const freqRows = Array.from(freqMap.entries())
-        .map(([sted, freq]) => ({ sted, freq }))
+      const freqRows = Array.from(freqMap.values())
         .sort((a, b) => b.freq - a.freq);
 
       const workbook = XLSX.utils.book_new();

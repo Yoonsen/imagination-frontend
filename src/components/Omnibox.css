@@ -2,7 +2,7 @@
   position: absolute;
   top: var(--ui-gutter);
   left: var(--ui-gutter);
-  width: min(560px, calc(100vw - 36px));
+  width: min(392px, calc(100vw - 36px));
   z-index: 5200;
 }
 

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Rnd } from 'react-rnd';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './PlaceSummaryCard.css';
 
 interface PlaceSummaryCardProps {
@@ -103,6 +104,12 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
         () => Object.values(bookConcordances).reduce((sum, rows) => sum + rows.length, 0),
         [bookConcordances]
     );
+    const { layout, onDragStop, onResizeStop } = useWindowLayout({
+        key: 'placeSummary',
+        defaultLayout: { x: 760, y: 24, width: 380, height: 600 },
+        minWidth: 320,
+        minHeight: 320
+    });
 
     useEffect(() => {
         if (!token || activeDhlabids.length === 0) {
@@ -290,7 +297,8 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
 
     return (
         <Rnd
-            default={{ x: 760, y: 24, width: 380, height: 600 }}
+            size={{ width: layout.width, height: layout.height }}
+            position={{ x: layout.x, y: layout.y }}
             minWidth={320}
             minHeight={320}
             dragHandleClassName="summary-header"
@@ -298,6 +306,8 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
             style={{ zIndex: activeWindow === 'summary' ? 2600 : 2000 }}
             onDragStart={() => setActiveWindow('summary')}
             onResizeStart={() => setActiveWindow('summary')}
+            onDragStop={onDragStop}
+            onResizeStop={onResizeStop}
         >
         <div
             className="place-summary-card glassmorphism"

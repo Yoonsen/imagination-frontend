@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { useCorpus, type BookMetadata } from '../context/CorpusContext';
 import { downloadCsv } from '../utils/download';
+import { useWindowLayout } from '../utils/windowLayout';
 import './CorpusBrowseTable.css';
 
 type SortKey = keyof BookMetadata;
@@ -10,6 +11,12 @@ export const CorpusBrowseTable: React.FC = () => {
     const { activeBooksMetadata, isBrowseTableOpen, setIsBrowseTableOpen, activeWindow, setActiveWindow } = useCorpus();
     const [sortKey, setSortKey] = useState<SortKey>('author');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const { layout, onDragStop, onResizeStop } = useWindowLayout({
+        key: 'browse',
+        defaultLayout: { x: 50, y: 50, width: 800, height: 500 },
+        minWidth: 400,
+        minHeight: 300
+    });
 
     const handleDownload = () => {
         const rows = sortedBooks.map((b) => ([
@@ -69,14 +76,18 @@ export const CorpusBrowseTable: React.FC = () => {
 
     return (
         <Rnd
-            default={{ x: 50, y: 50, width: 800, height: 500 }}
+            size={{ width: layout.width, height: layout.height }}
+            position={{ x: layout.x, y: layout.y }}
             minWidth={400}
             minHeight={300}
             cancel=".no-drag"
+            dragHandleClassName="drag-handle"
             className="corpus-browse-table-rnd"
             style={{ zIndex: activeWindow === 'browse' ? 2600 : 1700 }}
             onDragStart={() => setActiveWindow('browse')}
             onResizeStart={() => setActiveWindow('browse')}
+            onDragStop={onDragStop}
+            onResizeStop={onResizeStop}
         >
             <div className="table-card glassmorphism">
                 <div className="table-header drag-handle" onMouseDown={() => setActiveWindow('browse')}>

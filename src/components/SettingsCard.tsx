@@ -3,6 +3,7 @@ import { Rnd } from 'react-rnd';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './SettingsCard.css';
 
 export const SettingsCard: React.FC = () => {
@@ -14,18 +15,29 @@ export const SettingsCard: React.FC = () => {
     maxPlacesInView,
     setMaxPlacesInView
   } = useCorpus();
+  const { layout, onDragStop, onResizeStop } = useWindowLayout({
+    key: 'settings',
+    defaultLayout: { x: 20, y: 260, width: 320, height: 280 },
+    minWidth: 280,
+    minHeight: 220
+  });
 
   if (!isSettingsOpen) return null;
 
   return (
     <Rnd
-      default={{ x: 20, y: 260, width: 320, height: 'auto' }}
+      size={{ width: layout.width, height: layout.height }}
+      position={{ x: layout.x, y: layout.y }}
       minWidth={280}
+      minHeight={220}
       cancel=".no-drag"
+      dragHandleClassName="drag-handle"
       className="settings-card"
       style={{ zIndex: activeWindow === 'settings' ? 2600 : 1750 }}
       onDragStart={() => setActiveWindow('settings')}
       onResizeStart={() => setActiveWindow('settings')}
+      onDragStop={onDragStop}
+      onResizeStop={onResizeStop}
     >
       <div className="settings-header drag-handle" onMouseDown={() => setActiveWindow('settings')}>
         <div className="settings-title">

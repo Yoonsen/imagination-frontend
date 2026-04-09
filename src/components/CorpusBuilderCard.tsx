@@ -5,6 +5,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import * as XLSX from 'xlsx';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './CorpusBuilderCard.css';
 
 export const CorpusBuilderCard: React.FC = () => {
@@ -27,6 +28,12 @@ export const CorpusBuilderCard: React.FC = () => {
     const [selectedTitles, setSelectedTitles] = useState<{label: string, value: string}[]>([]);
     const [keywords, setKeywords] = useState<string>('');
     const [isKeywordSearching, setIsKeywordSearching] = useState(false);
+    const { layout, onDragStop, onResizeStop } = useWindowLayout({
+        key: 'builder',
+        defaultLayout: { x: 30, y: 30, width: 360, height: 620 },
+        minWidth: 300,
+        minHeight: 360
+    });
 
     // Dynamically calculate options based on allBooks AND mutually exclusive active filters
     const options = useMemo(() => {
@@ -197,14 +204,20 @@ export const CorpusBuilderCard: React.FC = () => {
 
     return (
         <Rnd
-            default={{ x: 30, y: 30, width: 340, height: 'auto' }}
+            size={{ width: layout.width, height: layout.height }}
+            position={{ x: layout.x, y: layout.y }}
             minWidth={300}
+            minHeight={360}
             cancel=".no-drag"
+            dragHandleClassName="drag-handle"
             className="corpus-builder-card"
             style={{ zIndex: activeWindow === 'builder' ? 2600 : 1700 }}
             onDragStart={() => setActiveWindow('builder')}
             onResizeStart={() => setActiveWindow('builder')}
+            onDragStop={onDragStop}
+            onResizeStop={onResizeStop}
         >
+            <div className="corpus-builder-shell">
             <div className="card-header drag-handle" onMouseDown={() => setActiveWindow('builder')}>
                 <div className="card-title">
                     <i className="fas fa-tools"></i> Corpus Builder
@@ -310,6 +323,7 @@ export const CorpusBuilderCard: React.FC = () => {
                             <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={importCorpus} />
                         </label>
                     </div>
+            </div>
             </div>
         </Rnd>
     );

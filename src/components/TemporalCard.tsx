@@ -3,6 +3,7 @@ import { Rnd } from 'react-rnd';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './TemporalCard.css';
 
 interface TemporalCardProps {
@@ -27,6 +28,12 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
   const minYear = years.length > 0 ? Math.min(...years) : 1800;
   const maxYear = years.length > 0 ? Math.max(...years) : 2025;
   const effectiveYear = temporalCutoffYear ?? maxYear;
+  const { layout, onDragStop, onResizeStop } = useWindowLayout({
+    key: 'temporal',
+    defaultLayout: { x: 360, y: 20, width: 360, height: 260 },
+    minWidth: 300,
+    minHeight: 220
+  });
 
   useEffect(() => {
     if (temporalCutoffYear === null && years.length > 0) {
@@ -44,13 +51,18 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
 
   return (
     <Rnd
-      default={{ x: 360, y: 20, width: 360, height: 'auto' }}
+      size={{ width: layout.width, height: layout.height }}
+      position={{ x: layout.x, y: layout.y }}
       minWidth={300}
+      minHeight={220}
       cancel=".no-drag"
+      dragHandleClassName="drag-handle"
       className="temporal-card"
       style={{ zIndex: activeWindow === 'temporal' ? 2600 : 1750 }}
       onDragStart={() => setActiveWindow('temporal')}
       onResizeStart={() => setActiveWindow('temporal')}
+      onDragStop={onDragStop}
+      onResizeStop={onResizeStop}
     >
       <div className="temporal-header drag-handle" onMouseDown={() => setActiveWindow('temporal')}>
         <div className="temporal-title">

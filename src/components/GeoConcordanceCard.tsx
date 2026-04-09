@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import * as XLSX from 'xlsx';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './GeoConcordanceCard.css';
 
 interface GeoConcordanceCardProps {
@@ -72,6 +73,12 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const lastQuerySignatureRef = useRef('');
   const lastWindowRef = useRef(8);
+  const { layout, onDragStop, onResizeStop } = useWindowLayout({
+    key: 'geoConcordance',
+    defaultLayout: { x: 740, y: 24, width: 520, height: 560 },
+    minWidth: 420,
+    minHeight: 340
+  });
 
   const renderedMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -246,7 +253,8 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
 
   return (
     <Rnd
-      default={{ x: 740, y: 24, width: 520, height: 560 }}
+      size={{ width: layout.width, height: layout.height }}
+      position={{ x: layout.x, y: layout.y }}
       minWidth={420}
       minHeight={340}
       dragHandleClassName="drag-handle"
@@ -254,6 +262,8 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
       style={{ zIndex: activeWindow === 'geoConcordance' ? 2600 : 1750 }}
       onDragStart={() => setActiveWindow('geoConcordance')}
       onResizeStart={() => setActiveWindow('geoConcordance')}
+      onDragStop={onDragStop}
+      onResizeStop={onResizeStop}
     >
       <div className="geo-conc-card">
         <div className="geo-conc-header drag-handle" onMouseDown={() => setActiveWindow('geoConcordance')}>

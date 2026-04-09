@@ -4,6 +4,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import html2canvas from 'html2canvas';
 import { useCorpus } from '../context/CorpusContext';
+import { useWindowLayout } from '../utils/windowLayout';
 import './VisualsCard.css';
 
 export const VisualsCard: React.FC = () => {
@@ -72,18 +73,29 @@ export const VisualsCard: React.FC = () => {
   const sliderHandleColor = downlightColorMode === 'red'
       ? '#ef4444'
       : '#3b82f6';
+  const { layout, onDragStop, onResizeStop } = useWindowLayout({
+    key: 'visuals',
+    defaultLayout: { x: 20, y: 20, width: 320, height: 560 },
+    minWidth: 280,
+    minHeight: 320
+  });
 
   if (!isVisualsOpen) return null;
 
   return (
     <Rnd
-      default={{ x: 20, y: 20, width: 320, height: 'auto' }}
+      size={{ width: layout.width, height: layout.height }}
+      position={{ x: layout.x, y: layout.y }}
       minWidth={280}
+      minHeight={320}
       cancel=".no-drag"
+      dragHandleClassName="drag-handle"
       className="visuals-card"
       style={{ zIndex: activeWindow === 'visuals' ? 2600 : 1750 }}
       onDragStart={() => setActiveWindow('visuals')}
       onResizeStart={() => setActiveWindow('visuals')}
+      onDragStop={onDragStop}
+      onResizeStop={onResizeStop}
     >
       <div className="visuals-header drag-handle" onMouseDown={() => setActiveWindow('visuals')}>
         <div className="visuals-title">

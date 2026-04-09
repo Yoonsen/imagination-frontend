@@ -1,4 +1,10 @@
 .corpus-builder-card {
+    /* Rnd container */
+}
+
+.corpus-builder-shell {
+    width: 100%;
+    height: 100%;
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -63,6 +69,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .toolbar {

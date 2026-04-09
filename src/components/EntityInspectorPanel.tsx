@@ -3,6 +3,7 @@ import { Rnd } from 'react-rnd';
 import { useCorpus } from '../context/CorpusContext';
 import { fetchNbCatalogImages, type CatalogImage } from '../utils/iiif';
 import { downloadCsv } from '../utils/download';
+import { useWindowLayout } from '../utils/windowLayout';
 import './EntityInspectorPanel.css';
 
 interface EntityInspectorPanelProps {
@@ -84,6 +85,12 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [placePage, setPlacePage] = useState(1);
   const [allPlaceRows, setAllPlaceRows] = useState<typeof places | null>(null);
+  const { layout, onDragStop, onResizeStop } = useWindowLayout({
+    key: windowKey,
+    defaultLayout: { x: defaultPosition?.x ?? 80, y: defaultPosition?.y ?? 24, width: 760, height: 560 },
+    minWidth: 520,
+    minHeight: 360
+  });
 
   useEffect(() => {
     if (mode !== 'places' || activeDhlabids.length === 0) {
@@ -338,7 +345,8 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
 
   return (
     <Rnd
-      default={{ x: defaultPosition?.x ?? 80, y: defaultPosition?.y ?? 24, width: 760, height: 560 }}
+      size={{ width: layout.width, height: layout.height }}
+      position={{ x: layout.x, y: layout.y }}
       minWidth={520}
       minHeight={360}
       dragHandleClassName="drag-handle"
@@ -346,6 +354,8 @@ export const EntityInspectorPanel: React.FC<EntityInspectorPanelProps> = ({
       style={{ zIndex: activeWindow === windowKey ? 2600 : 1800 }}
       onDragStart={() => setActiveWindow(windowKey)}
       onResizeStart={() => setActiveWindow(windowKey)}
+      onDragStop={onDragStop}
+      onResizeStop={onResizeStop}
     >
       <div className="entity-panel">
       <div className="entity-panel-header drag-handle">

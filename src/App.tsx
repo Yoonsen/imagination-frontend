@@ -54,6 +54,9 @@ function App() {
   const [sequenceShowLine, setSequenceShowLine] = useState(false);
   const [sequenceShortStepsMode, setSequenceShortStepsMode] = useState(true);
   const [sequenceMaxStepKm, setSequenceMaxStepKm] = useState(350);
+  const [geoFocusPlaceIds, setGeoFocusPlaceIds] = useState<string[]>([]);
+  const [geoFocusDimOthers, setGeoFocusDimOthers] = useState(true);
+  const [geoFocusStyle, setGeoFocusStyle] = useState<'fill' | 'ring'>('fill');
 
   const openBookSequenceForBook = (bookId: number) => {
     setSequenceBookId(bookId);
@@ -83,6 +86,11 @@ function App() {
               showLine: sequenceShowLine,
               shortStepsMode: sequenceShortStepsMode,
               maxStepKm: sequenceMaxStepKm
+            }}
+            geoFocus={{
+              placeIds: geoFocusPlaceIds,
+              dimOthers: geoFocusDimOthers,
+              style: geoFocusStyle
             }}
           />
         )}
@@ -258,6 +266,13 @@ function App() {
             setIsGeoConcordanceOpen(false);
             if (activeWindow === 'geoConcordance') setActiveWindow(null);
           }}
+          onApplyMapFocus={({ placeIds, dimOthers, style }) => {
+            setGeoFocusPlaceIds(placeIds);
+            setGeoFocusDimOthers(dimOthers);
+            setGeoFocusStyle(style);
+          }}
+          onClearMapFocus={() => setGeoFocusPlaceIds([])}
+          mapFocusAppliedCount={geoFocusPlaceIds.length}
         />
         <BookSequenceCard
           isOpen={isBookSequenceOpen}

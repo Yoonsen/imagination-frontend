@@ -14,6 +14,11 @@ interface MapMarkersProps {
         shortStepsMode: boolean;
         maxStepKm: number;
     };
+    geoFocus?: {
+        placeIds: string[];
+        dimOthers: boolean;
+        style: 'fill' | 'ring';
+    };
 }
 
 const MAP_MARKER_LIMIT = 1800;
@@ -79,7 +84,7 @@ const filterByShortSteps = (rows: GeoSequenceRow[], maxStepKm: number): GeoSeque
     return filtered;
 };
 
-export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSequence }) => {
+export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSequence, geoFocus }) => {
     const {
         places,
         totalPlaces,
@@ -166,6 +171,8 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             }
         });
         const hasSequence = sequenceIds.size > 0 || sequenceCoords.size > 0;
+        const geoFocusIds = new Set((geoFocus?.placeIds || []).map((id) => String(id).toLowerCase()));
+        const hasGeoFocus = geoFocusIds.size > 0;
         
         const frequencies = mapPlaces.map(p => p.frequency);
         const minFreq = Math.min(...frequencies);
@@ -223,13 +230,39 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
                 (hasSequence && placeIdCandidates.some((candidate) => sequenceIds.has(candidate)))
                 || sequenceCoords.has(toCoordKey(place.lat, place.lon))
             );
+            const inGeoFocus = hasGeoFocus && placeIdCandidates.some((candidate) => geoFocusIds.has(candidate));
             const shouldDimBySequence = hasSequence && bookSequence?.dimOthers && !inBookSequence;
-            const displayRadius = inBookSequence ? Math.max(3.5, radius * 1.18) : radius;
-            const displayStroke = inBookSequence ? '#facc15' : temporalStroke;
-            const displayFill = inBookSequence ? '#fde047' : temporalFill;
-            const displayOpacity = shouldDimBySequence ? 0.06 : (inBookSequence ? 0.86 : temporalOpacity);
-            const displayWeight = shouldDimBySequence ? 0 : (inBookSequence ? 2.2 : (isDownlighted ? 0 : 1.5));
-            const fallbackFill = shouldDimBySequence ? '#cbd5e1' : dimFill;
+            const shouldDimByGeo = hasGeoFocus && geoFocus?.dimOthers && !inGeoFocus && !inBookSequence;
+            const shouldDimByFocus = shouldDimBySequence || shouldDimByGeo;
+            const isAnyFocused = inBookSequence || inGeoFocus;
+            const displayRadius = inBookSequence
+                ? Math.max(3.5, radius * 1.18)
+                : inGeoFocus
+                    ? Math.max(3.2, radius * 1.12)
+                    : radius;
+            const geoStroke = '#c2410c';
+            const geoFill = '#fb923c';
+            const useGeoRing = inGeoFocus && geoFocus?.style === 'ring';
+            const displayStroke = inBookSequence
+                ? '#facc15'
+                : inGeoFocus
+                    ? geoStroke
+                    : temporalStroke;
+            const displayFill = inBookSequence
+                ? '#fde047'
+                : inGeoFocus && !useGeoRing
+                    ? geoFill
+                    : temporalFill;
+            const baseFocusOpacity = inBookSequence ? 0.86 : (inGeoFocus ? 0.92 : temporalOpacity);
+            const displayOpacity = shouldDimByFocus ? 0.06 : baseFocusOpacity;
+            const displayWeight = shouldDimByFocus
+                ? 0
+                : inBookSequence
+                    ? 2.2
+                    : inGeoFocus
+                        ? 2.1
+                        : (isDownlighted ? 0 : 1.5);
+            const fallbackFill = shouldDimByFocus ? '#cbd5e1' : dimFill;
 
             return (
                 <CircleMarker
@@ -237,12 +270,15 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
                     center={[place.lat, place.lon]}
                     radius={displayRadius}
                     pathOptions={{ 
-                        color: isDownlighted && !inBookSequence ? 'transparent' : displayStroke,
-                        fillColor: isDownlighted && !inBookSequence ? fallbackFill : displayFill,
-                        fillOpacity: isDownlighted && !inBookSequence ? Math.min(displayOpacity, 0.12) : displayOpacity,
+                        color: isDownlighted && !isAnyFocused ? 'transparent' : displayStroke,
+                        fillColor: isDownlighted && !isAnyFocused ? fallbackFill : displayFill,
+                        fillOpacity: isDownlighted && !isAnyFocused ? Math.min(displayOpacity, 0.12) : (useGeoRing ? 0.15 : displayOpacity),
                         weight: displayWeight
                     }}
                     eventHandlers={{
+                        add: (e) => {
+                            if (isAnyFocused) e.target.bringToFront();
+                        },
                         click: () => {
                             onSelectPlace({ token: place.token, placeId: place.id });
                             map.panTo([place.lat, place.lon]);
@@ -305,7 +341,8 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
         temporalMode,
         firstYearByToken
         , temporalMappingReady,
-        bookSequence
+        bookSequence,
+        geoFocus
     ]);
 
     if (isPlacesLoading || !temporalMappingReady) {

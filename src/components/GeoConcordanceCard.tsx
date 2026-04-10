@@ -8,6 +8,9 @@ import './GeoConcordanceCard.css';
 interface GeoConcordanceCardProps {
   isOpen: boolean;
   onClose: () => void;
+  onApplyMapFocus: (payload: { placeIds: string[]; dimOthers: boolean; style: 'fill' | 'ring' }) => void;
+  onClearMapFocus: () => void;
+  mapFocusAppliedCount: number;
 }
 
 interface GeoRow {
@@ -62,7 +65,27 @@ function highlightGeoBracket(fragment: string): string {
   });
 }
 
-export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, onClose }) => {
+function parseQueryGroups(input: string): { termGroups: string[][]; flatTerms: string[]; hasExplicitGroups: boolean } {
+  const raw = input.trim();
+  if (!raw) return { termGroups: [], flatTerms: [], hasExplicitGroups: false };
+  const hasExplicitGroups = raw.includes(',');
+  const groups = raw
+    .split(',')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((group) => group.split(/\s+/).map((token) => token.trim()).filter(Boolean));
+  const termGroups = groups.filter((g) => g.length > 0);
+  const flatTerms = termGroups.flat();
+  return { termGroups, flatTerms, hasExplicitGroups };
+}
+
+export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
+  isOpen,
+  onClose,
+  onApplyMapFocus,
+  onClearMapFocus,
+  mapFocusAppliedCount
+}) => {
   const { activeDhlabids, API_URL, activeWindow, setActiveWindow } = useCorpus();
   const [query, setQuery] = useState('');
   const [proximity, setProximity] = useState(8);
@@ -71,6 +94,7 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
   const [rows, setRows] = useState<GeoRow[]>([]);
   const [rendered, setRendered] = useState<RenderedRow[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [mapDimOthers, setMapDimOthers] = useState(true);
   const lastQuerySignatureRef = useRef('');
   const lastWindowRef = useRef(8);
   const { layout, onDragStop, onResizeStop } = useWindowLayout({
@@ -138,9 +162,25 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
     return ids.size;
   }, [rows, renderedMap]);
 
-  const runTermsQuery = async (terms: string[], withRendered = true) => {
-    setIsLoading(true);
-    setError(null);
+  const mapPlaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    rows.forEach((row) => {
+      const rawType = String(row.placeKeyType || '').toLowerCase();
+      const rawKey = String(row.placeKey || '').trim();
+      if (!rawKey) return;
+      const type = rawType === 'geonames' || rawType === '1'
+        ? 'geonames'
+        : rawType === 'internal' || rawType === '0'
+          ? 'internal'
+          : null;
+      if (!type) return;
+      ids.add(`${type}:${rawKey}`.toLowerCase());
+    });
+    return Array.from(ids);
+  }, [rows]);
+  const highlightTerms = useMemo(() => parseQueryGroups(query).flatTerms, [query]);
+
+  const executeTermsQuery = async (terms: string[], withRendered = true) => {
     try {
       const res = await fetch(`${API_URL}/or_query`, {
         method: 'POST',
@@ -163,6 +203,16 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
         rendered: withRendered ? ((data.rendered || []) as RenderedRow[]) : []
       };
     } catch (err) {
+      throw err;
+    }
+  };
+
+  const runTermsQuery = async (terms: string[], withRendered = true) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      return await executeTermsQuery(terms, withRendered);
+    } catch (err) {
       console.error(err);
       setError('Klarte ikke å hente geo-konkordans.');
       return { rows: [] as GeoRow[], rendered: [] as RenderedRow[] };
@@ -172,12 +222,45 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
   };
 
   const runQuery = async () => {
-    const term = query.trim();
-    const terms = term ? ['#geo', ...term.split(/\s+/).filter(Boolean)] : ['#geo'];
-    const currentSignature = `${activeDhlabids.join(',')}::${term.toLowerCase()}`;
+    const { termGroups, flatTerms, hasExplicitGroups } = parseQueryGroups(query);
+    const terms = ['#geo', ...flatTerms];
+    const currentSignature = `${activeDhlabids.join(',')}::${query.trim().toLowerCase()}`;
     const previousRows = rows;
     const previousRendered = rendered;
-    const result = await runTermsQuery(terms, true);
+    let result: { rows: GeoRow[]; rendered: RenderedRow[] };
+    if (hasExplicitGroups && termGroups.length > 1) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const perGroup = await Promise.all(
+          termGroups.map((group) => executeTermsQuery(['#geo', ...group], true))
+        );
+        const mergedRowsMap = new Map<string, GeoRow>();
+        const mergedRenderedMap = new Map<string, RenderedRow>();
+        perGroup.forEach((part) => {
+          part.rows.forEach((row) => {
+            const id = `${row.bookId}:${row.pos}:${row.placeKeyType || ''}:${row.placeKey || ''}`;
+            if (!mergedRowsMap.has(id)) mergedRowsMap.set(id, row);
+          });
+          part.rendered.forEach((item) => {
+            const id = `${item.bookId}:${item.pos}`;
+            if (!mergedRenderedMap.has(id)) mergedRenderedMap.set(id, item);
+          });
+        });
+        result = {
+          rows: Array.from(mergedRowsMap.values()),
+          rendered: Array.from(mergedRenderedMap.values())
+        };
+      } catch (err) {
+        console.error(err);
+        setError('Klarte ikke å hente geo-konkordans.');
+        result = { rows: [], rendered: [] };
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      result = await runTermsQuery(terms, true);
+    }
 
     let nextRows = result.rows;
     let nextRendered = result.rendered;
@@ -226,6 +309,7 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
           freqMap.set(freqKey, { sted: placeName, sted_id: placeId, freq: 1 });
         }
         return {
+          dhlabid: row.bookId,
           bok_id: row.bookId,
           pos: row.pos,
           stedsnavn: placeName,
@@ -236,10 +320,14 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
 
       const freqRows = Array.from(freqMap.values())
         .sort((a, b) => b.freq - a.freq);
+      const uniqueCorpusRows = Array.from(new Set(rows.map((row) => row.bookId)))
+        .sort((a, b) => a - b)
+        .map((id) => ({ dhlabid: id }));
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(freqRows), 'Frekvens');
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(concordanceRows), 'Konkordanser');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(uniqueCorpusRows), 'Korpus');
 
       const stamp = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `geo-konkordans-${stamp}.xlsx`);
@@ -247,6 +335,17 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
       console.error(err);
       setError('Klarte ikke å lage Excel-fil.');
     }
+  };
+
+  const applyCurrentMapFocus = (
+    nextPlaceIds = mapPlaceIds,
+    nextDimOthers = mapDimOthers
+  ) => {
+    onApplyMapFocus({
+      placeIds: nextPlaceIds,
+      dimOthers: nextDimOthers,
+      style: 'fill'
+    });
   };
 
   if (!isOpen) return null;
@@ -279,7 +378,7 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
           <div className="geo-conc-search">
             <input
               value={query}
-              placeholder="Skriv ord (f.eks. krig) => #geo + ord"
+              placeholder="Kommaseparerte grupper: oslo, london paris, england"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') runQuery();
@@ -306,6 +405,45 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
             <button type="button" onClick={downloadExcel} disabled={isLoading || rows.length === 0}>
               Last ned Excel
             </button>
+          </div>
+
+          <div className="geo-conc-map-tools">
+            <button
+              type="button"
+              onClick={() => applyCurrentMapFocus()}
+              disabled={isLoading || mapPlaceIds.length === 0}
+              title="Marker stedene fra nåværende geo-konkordans i kartet"
+            >
+              Vis steder på kart
+            </button>
+            <button
+              type="button"
+              className="geo-conc-map-clear"
+              onClick={onClearMapFocus}
+              disabled={mapFocusAppliedCount === 0}
+              title="Fjern geo-markering fra kartet"
+            >
+              Fjern kartmarkering
+            </button>
+            <label>
+              <input
+                type="checkbox"
+                checked={mapDimOthers}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setMapDimOthers(next);
+                  if (mapFocusAppliedCount > 0) {
+                    applyCurrentMapFocus(mapPlaceIds, next);
+                  }
+                }}
+              />
+              Demp resten
+            </label>
+            {mapFocusAppliedCount > 0 && (
+              <span className="geo-conc-map-applied">
+                Aktivt på kart: {mapFocusAppliedCount.toLocaleString()} steder
+              </span>
+            )}
           </div>
 
           {error && <div className="geo-conc-error">{error}</div>}
@@ -343,9 +481,11 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({ isOpen, 
                   <div className="geo-conc-snippets">
                     {group.rows.map(({ row, frag }) => {
                       const fragment = frag || '';
-                      const term = query.trim();
-                      const withTerm = term
-                        ? fragment.replace(new RegExp(escapeRegExp(term), 'gi'), (m) => `<mark>${m}</mark>`)
+                      const withTerm = highlightTerms.length > 0
+                        ? highlightTerms.reduce((acc, token) => {
+                            if (!token) return acc;
+                            return acc.replace(new RegExp(escapeRegExp(token), 'gi'), (m) => `<mark>${m}</mark>`);
+                          }, fragment)
                         : fragment;
                       const html = highlightGeoBracket(withTerm);
                       return (

@@ -21,6 +21,8 @@ interface BookSequenceCardProps {
   onSetShortStepsMode: (value: boolean) => void;
   maxStepKm: number;
   onSetMaxStepKm: (value: number) => void;
+  progressPct: number;
+  onSetProgressPct: (value: number) => void;
 }
 
 export const BookSequenceCard: React.FC<BookSequenceCardProps> = ({
@@ -37,7 +39,9 @@ export const BookSequenceCard: React.FC<BookSequenceCardProps> = ({
   shortStepsMode,
   onSetShortStepsMode,
   maxStepKm,
-  onSetMaxStepKm
+  onSetMaxStepKm,
+  progressPct,
+  onSetProgressPct
 }) => {
   const { activeBooksMetadata, API_URL, activeWindow, setActiveWindow } = useCorpus();
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +73,9 @@ export const BookSequenceCard: React.FC<BookSequenceCardProps> = ({
   }, [books, bookQuery]);
   const selectedBook = books.find((book) => book.dhlabid === selectedBookId) || null;
   const selectedInFiltered = !!selectedBookId && filteredBooks.some((book) => book.dhlabid === selectedBookId);
+  const cumulativeCount = sequenceRows.length === 0
+    ? 0
+    : Math.max(0, Math.floor((Math.max(0, Math.min(100, Math.round(progressPct))) / 100) * sequenceRows.length));
   const { layout, onDragStop, onResizeStop } = useWindowLayout({
     key: 'bookSequence',
     defaultLayout: { x: 560, y: 24, width: 420, height: 280 },
@@ -218,6 +225,22 @@ export const BookSequenceCard: React.FC<BookSequenceCardProps> = ({
             />
           </div>
 
+          <div className="book-sequence-row">
+            <label>Sekvensforløp: {Math.max(0, Math.round(progressPct))}%</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.max(0, Math.min(100, Math.round(progressPct)))}
+              disabled={sequenceRows.length === 0}
+              onChange={(e) => onSetProgressPct(Number(e.target.value))}
+            />
+            <div className="book-sequence-filter-meta">
+              Viser kumulativt fra første sted til valgt punkt i forløpet.
+            </div>
+          </div>
+
           <div className="book-sequence-status">
             {selectedBook && (
               <span>
@@ -225,6 +248,7 @@ export const BookSequenceCard: React.FC<BookSequenceCardProps> = ({
               </span>
             )}
             <span>Treff i sekvens: <strong>{sequenceRows.length.toLocaleString()}</strong></span>
+            <span>Kumulativ visning: <strong>{cumulativeCount.toLocaleString()} / {sequenceRows.length.toLocaleString()}</strong></span>
           </div>
 
           {error && <div className="book-sequence-error">{error}</div>}

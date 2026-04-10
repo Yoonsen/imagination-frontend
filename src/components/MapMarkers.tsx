@@ -13,6 +13,7 @@ interface MapMarkersProps {
         showLine: boolean;
         shortStepsMode: boolean;
         maxStepKm: number;
+        progressPct: number;
     };
     geoFocus?: {
         placeIds: string[];
@@ -27,6 +28,15 @@ const normalizeType = (value: unknown): 'geonames' | 'internal' | null => {
     if (value === 'geonames' || value === 'internal') return value;
     if (value === 1 || value === '1') return 'geonames';
     if (value === 0 || value === '0') return 'internal';
+    return null;
+};
+
+const toFiniteNumber = (value: unknown): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value === 'string') {
+        const n = Number(value.trim());
+        return Number.isFinite(n) ? n : null;
+    }
     return null;
 };
 
@@ -140,33 +150,49 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
         const mapPlaces = [...places]
             .sort((a, b) => b.frequency - a.frequency)
             .slice(0, MAP_MARKER_LIMIT);
-        const mapPlaceById = new Map(
+        const renderedMapPlaceIds = new Set(
             mapPlaces
+                .map((place) => String(place.id || '').toLowerCase())
+                .filter(Boolean)
+        );
+        const mapPlaceById = new Map(
+            places
                 .filter(place => typeof place.id === 'string' && place.id.length > 0)
                 .map(place => [String(place.id).toLowerCase(), place] as const)
         );
         const rawSequenceRows = bookSequence?.rows || [];
-        const sequenceRows = bookSequence?.shortStepsMode
-            ? filterByShortSteps(rawSequenceRows, Math.max(1, bookSequence?.maxStepKm || 1))
-            : rawSequenceRows;
+        const progressPct = Math.max(0, Math.min(100, Math.round(bookSequence?.progressPct || 0)));
+        const cappedLength = rawSequenceRows.length === 0
+            ? 0
+            : Math.max(0, Math.floor((progressPct / 100) * rawSequenceRows.length));
+        const progressRows = rawSequenceRows.slice(0, cappedLength);
+        const lineRows = bookSequence?.shortStepsMode
+            ? filterByShortSteps(progressRows, Math.max(1, bookSequence?.maxStepKm || 1))
+            : progressRows;
         const sequenceIds = new Set<string>();
         const sequenceCoords = new Set<string>();
-        sequenceRows.forEach((row) => {
+        progressRows.forEach((row) => {
             const normalizedType = normalizeType((row as any).placeKeyType);
             const keyRaw = (row as any).placeKey;
             const key = keyRaw === null || keyRaw === undefined ? '' : String(keyRaw).trim();
             if (normalizedType && key) {
                 sequenceIds.add(`${normalizedType}:${key}`.toLowerCase());
+            } else if (key) {
+                // If type is missing, allow both namespaces so markers are not lost.
+                sequenceIds.add(`geonames:${key}`.toLowerCase());
+                sequenceIds.add(`internal:${key}`.toLowerCase());
             }
-            if (typeof (row as any).geonamesId === 'number') {
-                sequenceIds.add(`geonames:${String((row as any).geonamesId)}`.toLowerCase());
+            const geonamesId = toFiniteNumber((row as any).geonamesId);
+            if (geonamesId !== null) {
+                sequenceIds.add(`geonames:${String(geonamesId)}`.toLowerCase());
             }
-            if (typeof (row as any).placeId === 'number') {
-                sequenceIds.add(`internal:${String((row as any).placeId)}`.toLowerCase());
+            const placeId = toFiniteNumber((row as any).placeId);
+            if (placeId !== null) {
+                sequenceIds.add(`internal:${String(placeId)}`.toLowerCase());
             }
-            const lat = (row as any).place?.lat;
-            const lon = (row as any).place?.lon;
-            if (typeof lat === 'number' && typeof lon === 'number') {
+            const lat = toFiniteNumber((row as any).place?.lat);
+            const lon = toFiniteNumber((row as any).place?.lon);
+            if (lat !== null && lon !== null) {
                 sequenceCoords.add(toCoordKey(lat, lon));
             }
         });
@@ -244,12 +270,12 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             const geoFill = '#fb923c';
             const useGeoRing = inGeoFocus && geoFocus?.style === 'ring';
             const displayStroke = inBookSequence
-                ? '#facc15'
+                ? '#ca8a04'
                 : inGeoFocus
                     ? geoStroke
                     : temporalStroke;
             const displayFill = inBookSequence
-                ? '#fde047'
+                ? '#eab308'
                 : inGeoFocus && !useGeoRing
                     ? geoFill
                     : temporalFill;
@@ -302,15 +328,52 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             );
         }).filter(Boolean);
 
-        const polylinePoints: [number, number][] = sequenceRows
+        const sequenceOverlayMarkers = progressRows
+            .map((row, idx) => {
+                const normalizedType = normalizeType((row as any).placeKeyType);
+                const key = normalizedType && (row as any).placeKey
+                    ? `${normalizedType}:${String((row as any).placeKey).toLowerCase()}`
+                    : null;
+                if (key && renderedMapPlaceIds.has(key)) return null;
+
+                let lat = toFiniteNumber(row.place?.lat);
+                let lon = toFiniteNumber(row.place?.lon);
+                if ((lat === null || lon === null) && key) {
+                    const fallback = mapPlaceById.get(key);
+                    if (fallback) {
+                        lat = fallback.lat;
+                        lon = fallback.lon;
+                    }
+                }
+                if (lat === null || lon === null) return null;
+                return (
+                    <CircleMarker
+                        key={`seq-extra-${idx}-${lat}-${lon}`}
+                        center={[lat, lon]}
+                        radius={4.6}
+                        pathOptions={{
+                            color: '#ca8a04',
+                            fillColor: '#eab308',
+                            fillOpacity: 0.9,
+                            weight: 1.8
+                        }}
+                        eventHandlers={{
+                            add: (e) => e.target.bringToFront()
+                        }}
+                    />
+                );
+            })
+            .filter(Boolean);
+
+        const polylinePoints: [number, number][] = lineRows
             .map((row) => {
                 const normalizedType = normalizeType((row as any).placeKeyType);
                 const key = normalizedType && (row as any).placeKey
                     ? `${normalizedType}:${String((row as any).placeKey)}`
                     : '';
-                const lat = row.place?.lat;
-                const lon = row.place?.lon;
-                if (typeof lat === 'number' && typeof lon === 'number') return [lat, lon] as [number, number];
+                const lat = toFiniteNumber(row.place?.lat);
+                const lon = toFiniteNumber(row.place?.lon);
+                if (lat !== null && lon !== null) return [lat, lon] as [number, number];
                 const fallback = key ? mapPlaceById.get(key.toLowerCase()) : null;
                 if (fallback) return [fallback.lat, fallback.lon] as [number, number];
                 return null;
@@ -318,10 +381,11 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             .filter((point): point is [number, number] => Array.isArray(point));
 
         if (!bookSequence?.showLine || polylinePoints.length < 2) {
-            return markers;
+            return [...markers, ...sequenceOverlayMarkers];
         }
         return [
             ...markers,
+            ...sequenceOverlayMarkers,
             <Polyline
                 key="book-sequence-line"
                 positions={polylinePoints}

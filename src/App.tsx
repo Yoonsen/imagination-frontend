@@ -54,6 +54,7 @@ function App() {
   const [sequenceShowLine, setSequenceShowLine] = useState(false);
   const [sequenceShortStepsMode, setSequenceShortStepsMode] = useState(true);
   const [sequenceMaxStepKm, setSequenceMaxStepKm] = useState(350);
+  const [sequenceProgressPct, setSequenceProgressPct] = useState(0);
   const [geoFocusPlaceIds, setGeoFocusPlaceIds] = useState<string[]>([]);
   const [geoFocusDimOthers, setGeoFocusDimOthers] = useState(true);
   const [geoFocusStyle, setGeoFocusStyle] = useState<'fill' | 'ring'>('fill');
@@ -85,7 +86,8 @@ function App() {
               dimOthers: sequenceDimOthers,
               showLine: sequenceShowLine,
               shortStepsMode: sequenceShortStepsMode,
-              maxStepKm: sequenceMaxStepKm
+              maxStepKm: sequenceMaxStepKm,
+              progressPct: sequenceProgressPct
             }}
             geoFocus={{
               placeIds: geoFocusPlaceIds,
@@ -283,7 +285,10 @@ function App() {
           selectedBookId={sequenceBookId}
           onSelectBookId={setSequenceBookId}
           sequenceRows={sequenceRows}
-          onSetSequenceRows={setSequenceRows}
+          onSetSequenceRows={(rows) => {
+            setSequenceRows(rows);
+            setSequenceProgressPct(0);
+          }}
           dimOthers={sequenceDimOthers}
           onSetDimOthers={setSequenceDimOthers}
           showLine={sequenceShowLine}
@@ -292,6 +297,8 @@ function App() {
           onSetShortStepsMode={setSequenceShortStepsMode}
           maxStepKm={sequenceMaxStepKm}
           onSetMaxStepKm={setSequenceMaxStepKm}
+          progressPct={sequenceProgressPct}
+          onSetProgressPct={setSequenceProgressPct}
         />
         <TemporalCard
           isOpen={isTemporalOpen}

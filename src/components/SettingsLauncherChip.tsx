@@ -3,9 +3,10 @@ import './SettingsLauncherChip.css';
 
 interface SettingsLauncherChipProps {
   onSettingsPanelClick: () => void;
+  onSuggestChangeClick: () => void;
 }
 
-export const SettingsLauncherChip: React.FC<SettingsLauncherChipProps> = ({ onSettingsPanelClick }) => {
+export const SettingsLauncherChip: React.FC<SettingsLauncherChipProps> = ({ onSettingsPanelClick, onSuggestChangeClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
@@ -44,6 +45,7 @@ export const SettingsLauncherChip: React.FC<SettingsLauncherChipProps> = ({ onSe
       {isOpen && (
         <div className="chip-menu" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
           <button onClick={() => { onSettingsPanelClick(); setIsOpen(false); }}>Generelle parametre</button>
+          <button onClick={() => { onSuggestChangeClick(); setIsOpen(false); }}>Foreslå endring</button>
         </div>
       )}
     </div>

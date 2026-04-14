@@ -34,11 +34,12 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
   const effectiveYear = temporalCutoffYear ?? maxYear;
   const [isTemporalMappingComputing, setIsTemporalMappingComputing] = useState(false);
   const [firstYearByToken, setFirstYearByToken] = useState<Map<string, number> | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const { layout, onDragStop, onResizeStop } = useWindowLayout({
     key: 'temporal',
-    defaultLayout: { x: 360, y: 20, width: 360, height: 260 },
+    defaultLayout: { x: 360, y: 20, width: 420, height: 430 },
     minWidth: 300,
-    minHeight: 220
+    minHeight: 340
   });
 
   useEffect(() => {
@@ -46,6 +47,25 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
       setTemporalCutoffYear(maxYear);
     }
   }, [temporalCutoffYear, years.length, maxYear, setTemporalCutoffYear]);
+
+  useEffect(() => {
+    if (!temporalEnabled || years.length === 0 || !isPlaying) return undefined;
+    const current = temporalCutoffYear ?? minYear;
+    if (current >= maxYear) {
+      setIsPlaying(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      const next = Math.min(maxYear, current + 1);
+      setTemporalCutoffYear(next);
+      if (next >= maxYear) setIsPlaying(false);
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [temporalEnabled, years.length, isPlaying, temporalCutoffYear, minYear, maxYear, setTemporalCutoffYear]);
+
+  useEffect(() => {
+    if (!temporalEnabled) setIsPlaying(false);
+  }, [temporalEnabled]);
 
   useEffect(() => {
     if (isOpen && !temporalEnabled) {
@@ -126,6 +146,7 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const yMax = Math.max(1, cumulativeSeries[cumulativeSeries.length - 1]?.cumulative || 0);
+    const startValue = cumulativeSeries[0]?.cumulative || 0;
     const xSpan = Math.max(1, maxYear - minYear);
     const xForYear = (year: number) => padding.left + ((year - minYear) / xSpan) * innerWidth;
     const yForValue = (value: number) => padding.top + (1 - (value / yMax)) * innerHeight;
@@ -142,6 +163,7 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
       innerHeight,
       yMax,
       yMid,
+      startValue,
       xForYear,
       yForValue,
       path,
@@ -156,7 +178,7 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
       size={{ width: layout.width, height: layout.height }}
       position={{ x: layout.x, y: layout.y }}
       minWidth={300}
-      minHeight={220}
+      minHeight={340}
       cancel=".no-drag"
       dragHandleClassName="drag-handle"
       className="temporal-card"
@@ -194,6 +216,34 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
           <div className="temporal-range">
             <span>{minYear}</span>
             <span>{maxYear}</span>
+          </div>
+          <div className="temporal-play-row">
+            <button
+              type="button"
+              className={`temporal-play-btn ${isPlaying ? 'active' : ''}`}
+              onClick={() => {
+                if (!temporalEnabled) setTemporalEnabled(true);
+                if ((temporalCutoffYear ?? minYear) >= maxYear) {
+                  setTemporalCutoffYear(minYear);
+                }
+                setIsPlaying((v) => !v);
+              }}
+            >
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+            <button
+              type="button"
+              className="temporal-play-btn"
+              onClick={() => {
+                setIsPlaying(false);
+                setTemporalCutoffYear(minYear);
+                if (!temporalEnabled) setTemporalEnabled(true);
+              }}
+            >
+              <i className="fas fa-undo"></i>
+              Til start
+            </button>
           </div>
         </div>
 
@@ -245,6 +295,15 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
                     y2={chartGeometry.yForValue(chartGeometry.yMid)}
                     className="temporal-chart-grid"
                   />
+                  {chartGeometry.startValue > 0 && chartGeometry.startValue !== chartGeometry.yMid && chartGeometry.startValue !== chartGeometry.yMax && (
+                    <line
+                      x1={chartGeometry.padding.left}
+                      y1={chartGeometry.yForValue(chartGeometry.startValue)}
+                      x2={chartGeometry.width - chartGeometry.padding.right}
+                      y2={chartGeometry.yForValue(chartGeometry.startValue)}
+                      className="temporal-chart-grid temporal-chart-grid--start"
+                    />
+                  )}
                   <text
                     x={chartGeometry.padding.left - 6}
                     y={chartGeometry.yForValue(chartGeometry.yMax) + 3}
@@ -269,6 +328,16 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
                   >
                     0
                   </text>
+                  {chartGeometry.startValue > 0 && chartGeometry.startValue !== chartGeometry.yMid && chartGeometry.startValue !== chartGeometry.yMax && (
+                    <text
+                      x={chartGeometry.padding.left - 6}
+                      y={chartGeometry.yForValue(chartGeometry.startValue) + 3}
+                      textAnchor="end"
+                      className="temporal-chart-tick temporal-chart-tick--start"
+                    >
+                      {chartGeometry.startValue.toLocaleString()}
+                    </text>
+                  )}
                   <line
                     x1={chartGeometry.cutoffX}
                     y1={chartGeometry.padding.top}
@@ -277,8 +346,15 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
                     className="temporal-chart-cutoff"
                   />
                   <path d={chartGeometry.path} className="temporal-chart-line" />
+                  <circle
+                    cx={chartGeometry.xForYear(minYear)}
+                    cy={chartGeometry.yForValue(chartGeometry.startValue)}
+                    r={2.4}
+                    className="temporal-chart-start-point"
+                  />
                 </svg>
                 <div className="temporal-chart-legend">
+                  <span>Start ({minYear}): {chartGeometry.startValue.toLocaleString()}</span>
                   <span>Y: 0-{chartGeometry.yMax.toLocaleString()} steder (kumulativt)</span>
                   <span>Cutoff: {effectiveYear}</span>
                 </div>

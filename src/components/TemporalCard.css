@@ -72,6 +72,34 @@
   margin-top: 6px;
 }
 
+.temporal-play-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.temporal-play-btn {
+  flex: 1;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.65);
+  color: #334155;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.temporal-play-btn.active {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+
 .temporal-mode-row {
   display: flex;
   gap: 8px;
@@ -127,6 +155,10 @@
   stroke-dasharray: 2 3;
 }
 
+.temporal-chart-grid--start {
+  stroke: rgba(37, 99, 235, 0.32);
+}
+
 .temporal-chart-line {
   fill: none;
   stroke: #2563eb;
@@ -139,10 +171,18 @@
   font-weight: 600;
 }
 
+.temporal-chart-tick--start {
+  fill: #2563eb;
+}
+
 .temporal-chart-cutoff {
   stroke: rgba(234, 88, 12, 0.7);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
+}
+
+.temporal-chart-start-point {
+  fill: #2563eb;
 }
 
 .temporal-chart-legend {

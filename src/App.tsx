@@ -149,6 +149,20 @@ function App() {
             setActiveWindow('settings');
           }
         }}
+        onSuggestChangeClick={() => {
+          const title = encodeURIComponent('Forslag: ');
+          const body = encodeURIComponent([
+            '## Forslag',
+            'Beskriv ønsket endring her.',
+            '',
+            '## Hvor i appen',
+            'f.eks. Tidsvisning / Geo-konkordans / Steder',
+            '',
+            '## Hvorfor',
+            'Hva blir bedre for brukeren?'
+          ].join('\n'));
+          window.open(`https://github.com/Yoonsen/imagination-frontend/issues/new?title=${title}&body=${body}`, '_blank', 'noopener,noreferrer');
+        }}
       />
       <StatsHUD
         onBooksCorpusBuilderClick={() => {

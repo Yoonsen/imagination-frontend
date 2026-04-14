@@ -4,7 +4,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { useCorpus } from '../context/CorpusContext';
 import { useWindowLayout } from '../utils/windowLayout';
-import { hasFirstYearCacheForCorpus, isFirstYearFetchInFlight } from '../utils/temporal';
+import { fetchFirstYearByTokenForCorpus, hasFirstYearCacheForCorpus, isFirstYearFetchInFlight } from '../utils/temporal';
 import './TemporalCard.css';
 
 interface TemporalCardProps {
@@ -21,6 +21,9 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
     setTemporalCutoffYear,
     temporalMode,
     setTemporalMode,
+    API_URL,
+    maxPlacesInView,
+    totalPlaces,
     activeWindow,
     setActiveWindow
   } = useCorpus();
@@ -30,6 +33,7 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
   const maxYear = years.length > 0 ? Math.max(...years) : 2025;
   const effectiveYear = temporalCutoffYear ?? maxYear;
   const [isTemporalMappingComputing, setIsTemporalMappingComputing] = useState(false);
+  const [firstYearByToken, setFirstYearByToken] = useState<Map<string, number> | null>(null);
   const { layout, onDragStop, onResizeStop } = useWindowLayout({
     key: 'temporal',
     defaultLayout: { x: 360, y: 20, width: 360, height: 260 },
@@ -50,6 +54,36 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
   }, [isOpen, temporalEnabled, setTemporalEnabled]);
 
   useEffect(() => {
+    if (!isOpen || !temporalEnabled || activeBooksMetadata.length === 0) {
+      setFirstYearByToken(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const firstSeen = await fetchFirstYearByTokenForCorpus({
+          apiUrl: API_URL,
+          activeBooksMetadata,
+          maxPlacesInView,
+          totalPlaces
+        });
+        if (!cancelled) setFirstYearByToken(firstSeen);
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+          setFirstYearByToken(null);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, temporalEnabled, activeBooksMetadata, API_URL, maxPlacesInView, totalPlaces]);
+
+  useEffect(() => {
     if (!isOpen || !temporalEnabled) {
       setIsTemporalMappingComputing(false);
       return undefined;
@@ -65,6 +99,55 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
     const timer = window.setInterval(updateStatus, 250);
     return () => window.clearInterval(timer);
   }, [isOpen, temporalEnabled, activeBooksMetadata]);
+
+  const cumulativeSeries = useMemo(() => {
+    if (!firstYearByToken || minYear > maxYear) return [] as Array<{ year: number; cumulative: number }>;
+    const yearlyCounts = new Map<number, number>();
+    firstYearByToken.forEach((year) => {
+      if (!Number.isFinite(year)) return;
+      const y = Math.round(year);
+      if (y < minYear || y > maxYear) return;
+      yearlyCounts.set(y, (yearlyCounts.get(y) || 0) + 1);
+    });
+
+    let running = 0;
+    const points: Array<{ year: number; cumulative: number }> = [];
+    for (let y = minYear; y <= maxYear; y += 1) {
+      running += yearlyCounts.get(y) || 0;
+      points.push({ year: y, cumulative: running });
+    }
+    return points;
+  }, [firstYearByToken, minYear, maxYear]);
+
+  const chartGeometry = useMemo(() => {
+    const width = 320;
+    const height = 120;
+    const padding = { top: 10, right: 12, bottom: 20, left: 36 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const yMax = Math.max(1, cumulativeSeries[cumulativeSeries.length - 1]?.cumulative || 0);
+    const xSpan = Math.max(1, maxYear - minYear);
+    const xForYear = (year: number) => padding.left + ((year - minYear) / xSpan) * innerWidth;
+    const yForValue = (value: number) => padding.top + (1 - (value / yMax)) * innerHeight;
+    const yMid = Math.round(yMax / 2);
+    const path = cumulativeSeries
+      .map((point, i) => `${i === 0 ? 'M' : 'L'}${xForYear(point.year).toFixed(2)},${yForValue(point.cumulative).toFixed(2)}`)
+      .join(' ');
+    const cutoffX = xForYear(Math.min(maxYear, Math.max(minYear, effectiveYear)));
+    return {
+      width,
+      height,
+      padding,
+      innerWidth,
+      innerHeight,
+      yMax,
+      yMid,
+      xForYear,
+      yForValue,
+      path,
+      cutoffX
+    };
+  }, [cumulativeSeries, minYear, maxYear, effectiveYear]);
 
   if (!isOpen) return null;
 
@@ -111,6 +194,96 @@ export const TemporalCard: React.FC<TemporalCardProps> = ({ isOpen, onClose }) =
           <div className="temporal-range">
             <span>{minYear}</span>
             <span>{maxYear}</span>
+          </div>
+        </div>
+
+        <div className="temporal-section">
+          <label>Kumulativ utvikling i steder</label>
+          <div className="temporal-chart-shell">
+            {cumulativeSeries.length === 0 ? (
+              <div className="temporal-chart-empty">Ingen tidsdata tilgjengelig ennå.</div>
+            ) : (
+              <>
+                <svg
+                  className="temporal-chart"
+                  viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`}
+                  role="img"
+                  aria-label="Kumulativt antall steder per år"
+                >
+                  <line
+                    x1={chartGeometry.padding.left}
+                    y1={chartGeometry.height - chartGeometry.padding.bottom}
+                    x2={chartGeometry.width - chartGeometry.padding.right}
+                    y2={chartGeometry.height - chartGeometry.padding.bottom}
+                    className="temporal-chart-axis"
+                  />
+                  <line
+                    x1={chartGeometry.padding.left}
+                    y1={chartGeometry.padding.top}
+                    x2={chartGeometry.padding.left}
+                    y2={chartGeometry.height - chartGeometry.padding.bottom}
+                    className="temporal-chart-axis"
+                  />
+                  <line
+                    x1={chartGeometry.padding.left}
+                    y1={chartGeometry.yForValue(0)}
+                    x2={chartGeometry.width - chartGeometry.padding.right}
+                    y2={chartGeometry.yForValue(0)}
+                    className="temporal-chart-grid"
+                  />
+                  <line
+                    x1={chartGeometry.padding.left}
+                    y1={chartGeometry.yForValue(chartGeometry.yMax)}
+                    x2={chartGeometry.width - chartGeometry.padding.right}
+                    y2={chartGeometry.yForValue(chartGeometry.yMax)}
+                    className="temporal-chart-grid"
+                  />
+                  <line
+                    x1={chartGeometry.padding.left}
+                    y1={chartGeometry.yForValue(chartGeometry.yMid)}
+                    x2={chartGeometry.width - chartGeometry.padding.right}
+                    y2={chartGeometry.yForValue(chartGeometry.yMid)}
+                    className="temporal-chart-grid"
+                  />
+                  <text
+                    x={chartGeometry.padding.left - 6}
+                    y={chartGeometry.yForValue(chartGeometry.yMax) + 3}
+                    textAnchor="end"
+                    className="temporal-chart-tick"
+                  >
+                    {chartGeometry.yMax.toLocaleString()}
+                  </text>
+                  <text
+                    x={chartGeometry.padding.left - 6}
+                    y={chartGeometry.yForValue(chartGeometry.yMid) + 3}
+                    textAnchor="end"
+                    className="temporal-chart-tick"
+                  >
+                    {chartGeometry.yMid.toLocaleString()}
+                  </text>
+                  <text
+                    x={chartGeometry.padding.left - 6}
+                    y={chartGeometry.yForValue(0) + 3}
+                    textAnchor="end"
+                    className="temporal-chart-tick"
+                  >
+                    0
+                  </text>
+                  <line
+                    x1={chartGeometry.cutoffX}
+                    y1={chartGeometry.padding.top}
+                    x2={chartGeometry.cutoffX}
+                    y2={chartGeometry.height - chartGeometry.padding.bottom}
+                    className="temporal-chart-cutoff"
+                  />
+                  <path d={chartGeometry.path} className="temporal-chart-line" />
+                </svg>
+                <div className="temporal-chart-legend">
+                  <span>Y: 0-{chartGeometry.yMax.toLocaleString()} steder (kumulativt)</span>
+                  <span>Cutoff: {effectiveYear}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

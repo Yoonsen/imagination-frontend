@@ -102,3 +102,60 @@
   font-size: 0.76rem;
   color: #64748b;
 }
+
+.temporal-chart-shell {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 8px 8px 6px;
+}
+
+.temporal-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.temporal-chart-axis {
+  stroke: rgba(71, 85, 105, 0.7);
+  stroke-width: 1;
+}
+
+.temporal-chart-grid {
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.temporal-chart-line {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+
+.temporal-chart-tick {
+  fill: #64748b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.temporal-chart-cutoff {
+  stroke: rgba(234, 88, 12, 0.7);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.temporal-chart-legend {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.temporal-chart-empty {
+  color: #64748b;
+  font-size: 0.76rem;
+  padding: 6px 2px;
+}

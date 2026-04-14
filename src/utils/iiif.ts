@@ -22,6 +22,20 @@ function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function toHighResThumbnail(links: Record<string, unknown> | null): string {
+  if (!links) return '';
+  const customTemplate = asString(asRecord(links.thumbnail_custom)?.href);
+  if (customTemplate.includes('{width},{height}')) {
+    // Ask resolver for a larger thumbnail so cards stay crisp.
+    return customTemplate.replace('{width},{height}', '640,640');
+  }
+  return (
+    asString(asRecord(links.thumbnail_large)?.href) ||
+    asString(asRecord(links.thumbnail_medium)?.href) ||
+    asString(asRecord(links.thumbnail_small)?.href)
+  );
+}
+
 export async function fetchNbCatalogImages(searchTerm: string, limit = 6): Promise<CatalogImage[]> {
   const term = searchTerm.trim();
   if (!term) return [];
@@ -59,7 +73,7 @@ export async function fetchNbCatalogImages(searchTerm: string, limit = 6): Promi
 
       const metadata = asRecord(itemRec.metadata);
       const links = asRecord(itemRec._links);
-      const thumbnail = asString(asRecord(links?.thumbnail_medium)?.href);
+      const thumbnail = toHighResThumbnail(links);
       if (!thumbnail) return null;
 
       const manifest = asString(asRecord(links?.presentation)?.href);

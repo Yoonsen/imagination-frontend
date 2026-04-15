@@ -53,6 +53,18 @@ body, html, #root {
   pointer-events: auto;
 }
 
+.drag-handle {
+  touch-action: none;
+  -ms-touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.react-resizable-handle {
+  touch-action: none;
+  -ms-touch-action: none;
+}
+
 .floating-panel {
   position: absolute;
   background: var(--glass-bg);

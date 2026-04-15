@@ -61,6 +61,15 @@ function clampLayout(layout: WindowLayout, minWidth: number, minHeight: number):
   return { x, y, width, height };
 }
 
+function normalizeLayout(layout: WindowLayout, minWidth: number, minHeight: number): WindowLayout {
+  return {
+    x: Number.isFinite(layout.x) ? layout.x : 0,
+    y: Number.isFinite(layout.y) ? layout.y : 0,
+    width: Math.max(minWidth, Number.isFinite(layout.width) ? layout.width : minWidth),
+    height: Math.max(minHeight, Number.isFinite(layout.height) ? layout.height : minHeight)
+  };
+}
+
 export function useWindowLayout({
   key,
   defaultLayout,
@@ -77,13 +86,15 @@ export function useWindowLayout({
 
   const persistLayout = useCallback((candidate: WindowLayout) => {
     if (typeof window === 'undefined') return candidate;
-    const clamped = clampLayout(candidate, minWidth, minHeight);
+    // Persist free-form position during active session.
+    // Layout is clamped when window mounts/reopens (initial state) and on viewport resize.
+    const normalized = normalizeLayout(candidate, minWidth, minHeight);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(clamped));
+      localStorage.setItem(storageKey, JSON.stringify(normalized));
     } catch {
       // Ignore storage quota or private mode errors.
     }
-    return clamped;
+    return normalized;
   }, [minWidth, minHeight, storageKey]);
 
   const setAndPersist = useCallback((candidate: WindowLayout) => {

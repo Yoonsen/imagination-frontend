@@ -21,6 +21,8 @@ export const VisualsCard: React.FC = () => {
     setDownlightPercentile,
     lowFreqGreenStrength,
     setLowFreqGreenStrength,
+    markerSizeScale,
+    setMarkerSizeScale,
     heatmapStrength,
     setHeatmapStrength,
     compareSegmentsEnabled,
@@ -172,6 +174,24 @@ export const VisualsCard: React.FC = () => {
         </div>
 
         <div className="visuals-section">
+          <label>Størrelse på stedsmarkører ({markerSizeScale}%)</label>
+          <div style={{ padding: '0 8px' }}>
+            <Slider
+              min={20}
+              max={200}
+              step={5}
+              value={markerSizeScale}
+              onChange={(val) => setMarkerSizeScale(val as number)}
+              trackStyle={[{ backgroundColor: '#4B6CB7' }]}
+              handleStyle={[{ borderColor: '#4B6CB7', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }]}
+            />
+          </div>
+          <small className="visuals-help">
+            Skalerer radius på markører i kartvisning.
+          </small>
+        </div>
+
+        <div className="visuals-section">
           <label>Demp lavfrekvente steder ({downlightPercentile}%)</label>
           <div style={{ padding: '0 8px' }}>
             <Slider
@@ -210,8 +230,9 @@ export const VisualsCard: React.FC = () => {
               className={`visuals-toggle ${compareSegmentsEnabled ? 'active' : ''}`}
               onClick={() => setCompareSegmentsEnabled(!compareSegmentsEnabled)}
               disabled={segmentABookIds.length === 0 || segmentBBookIds.length === 0}
+              title={compareSegmentsEnabled ? 'Slå av sammenligning' : 'Sammenlign segment A og B'}
             >
-              {compareSegmentsEnabled ? 'Sammenligning på' : 'Sammenligning av'}
+              {compareSegmentsEnabled ? 'Slå av sammenligning' : 'Sammenlign A/B'}
             </button>
           </div>
           <small className="visuals-help">

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { useCorpus } from '../context/CorpusContext';
 import { mixHex } from '../utils/colors';
 import { fetchFirstYearByTokenForCorpus } from '../utils/temporal';
@@ -134,6 +135,15 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
         && segmentBBookIds.length > 0;
 
     useEffect(() => {
+        // Ensure no stale marker layers remain when compare/state toggles.
+        map.eachLayer((layer) => {
+            if (layer instanceof L.CircleMarker) {
+                map.removeLayer(layer);
+            }
+        });
+    }, [map, compareReady, markerSizeScale]);
+
+    useEffect(() => {
         if (!compareReady) {
             setComparePlaces(null);
             return;
@@ -233,6 +243,10 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
     }, [temporalEnabled, activeBooksMetadata, API_URL, maxPlacesInView, totalPlaces]);
 
     const renderedLayers = useMemo(() => {
+        if (compareReady && !comparePlaces) {
+            // Avoid showing stale non-compare markers while compare places are loading.
+            return [];
+        }
         if (compareReady && comparePlaces && comparePlaces.length > 0) {
             const mapPlaces = [...comparePlaces]
                 .sort((a, b) => (b.frequencyA + b.frequencyB) - (a.frequencyA + a.frequencyB))
@@ -256,7 +270,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
                 const label = inA && inB ? 'Begge segmenter' : (inA ? 'Kun segment A' : 'Kun segment B');
                 return (
                     <CircleMarker
-                        key={`cmp-${place.id}`}
+                        key={`cmp-${place.id}-${markerSizeScale}`}
                         center={[place.lat, place.lon]}
                         radius={radius}
                         pathOptions={{ color, fillColor: fill, fillOpacity: 0.72, weight: 1.8 }}
@@ -427,7 +441,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
 
             return (
                 <CircleMarker
-                    key={place.id}
+                    key={`${place.id}-${markerSizeScale}`}
                     center={[place.lat, place.lon]}
                     radius={displayRadius}
                     pathOptions={{ 

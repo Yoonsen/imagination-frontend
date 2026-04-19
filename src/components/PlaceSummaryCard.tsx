@@ -85,7 +85,14 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
     const concordanceCacheRef = useRef<Map<string, ConcordanceHit[]>>(new Map());
     const downloadMenuRef = useRef<HTMLDivElement | null>(null);
 
-    const effectivePlaceId = placeId || (token ? places.find((p) => p.token === token)?.id : undefined);
+    const selectedPlace = useMemo(() => {
+        if (!token) return null;
+        if (placeId) {
+            return places.find((p) => String(p.id) === String(placeId)) || null;
+        }
+        return places.find((p) => p.token === token) || null;
+    }, [token, placeId, places]);
+    const effectivePlaceId = placeId || selectedPlace?.id;
     const sortedBooks = useMemo(
         () => [...books].sort((a, b) => b.mentions - a.mentions),
         [books]
@@ -134,17 +141,6 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
         setCollapsedBooks({});
         let cancelled = false;
         const run = async () => {
-            const fetchBooksFromDetails = async (): Promise<PlaceBookDetail[]> => {
-                const res = await fetch(`${API_URL}/api/places/details`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dhlabids: activeDhlabids, token })
-                });
-                if (!res.ok) throw new Error('Failed to fetch place details');
-                const data = await res.json();
-                return data.books || [];
-            };
-
             const fetchBooksFromGeo = async (): Promise<PlaceBookDetail[]> => {
                 const geoTerms = buildGeoTermCandidates(effectivePlaceId);
                 if (geoTerms.length === 0) return [];
@@ -158,8 +154,8 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                                 useFilter: true,
                                 filterIds: activeDhlabids,
                                 totalLimit: 200000,
-                                before: 0,
-                                after: 0,
+                                before: 1,
+                                after: 1,
                                 renderHits: false,
                                 _perf: true
                             })
@@ -196,13 +192,10 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
             };
 
             try {
-                const [detailBooks, geoBooks] = await Promise.all([
-                    fetchBooksFromDetails().catch(() => [] as PlaceBookDetail[]),
-                    fetchBooksFromGeo().catch(() => [] as PlaceBookDetail[])
-                ]);
+                const geoBooks = await fetchBooksFromGeo().catch(() => [] as PlaceBookDetail[]);
                 if (cancelled) return;
                 const merged = new Map<number, PlaceBookDetail>();
-                [...detailBooks, ...geoBooks].forEach((book) => {
+                geoBooks.forEach((book) => {
                     const current = merged.get(book.dhlabid);
                     if (!current) {
                         merged.set(book.dhlabid, book);
@@ -230,7 +223,7 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
         return () => {
             cancelled = true;
         };
-    }, [token, effectivePlaceId, activeDhlabids, metadataById, API_URL]);
+    }, [token, effectivePlaceId, selectedPlace, activeDhlabids, metadataById, API_URL]);
 
     useEffect(() => {
         const onPointerDown = (event: MouseEvent) => {
@@ -280,27 +273,6 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                 }
             }
 
-            if (hits.length === 0) {
-                const res = await fetch(`${API_URL}/concordance`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        wordA: token,
-                        window: 8,
-                        before: 8,
-                        after: 8,
-                        perBook: 12,
-                        totalLimit: 12,
-                        _perf: true,
-                        useFilter: true,
-                        filterIds: [bookId]
-                    })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    hits = uniqueHits(extractHits(data));
-                }
-            }
             return hits;
         };
 

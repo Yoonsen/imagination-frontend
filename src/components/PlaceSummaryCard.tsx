@@ -35,7 +35,7 @@ function buildGeoTermCandidates(placeId: string | null | undefined): string[] {
   const strippedGeo = raw.replace(/^#?geo:/i, '');
   const strippedNb = strippedGeo.replace(/^nb:/i, '').trim();
   if (!/^\d+$/.test(strippedNb)) return [];
-  return [`#geo:${strippedNb}`];
+  return [`#geo:${strippedNb}`, `#geo:nb:${strippedNb}`];
 }
 
 function extractHits(data: any): ConcordanceHit[] {
@@ -153,7 +153,7 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                                 terms: [geoTerm],
                                 useFilter: true,
                                 filterIds: activeDhlabids,
-                                totalLimit: 200000,
+                                totalLimit: 5000,
                                 before: 1,
                                 after: 1,
                                 renderHits: false,

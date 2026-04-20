@@ -26,3 +26,4 @@ dist-ssr
 # SQLite runtime sidecars
 *.db-shm
 *.db-wal
+geo_imagination.db

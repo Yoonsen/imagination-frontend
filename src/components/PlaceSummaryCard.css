@@ -292,3 +292,8 @@
     border-radius: 4px;
     font-weight: 600;
 }
+
+.concordance-item .place-hit-mark {
+    background: rgba(250, 204, 21, 0.62);
+    border-radius: 3px;
+}

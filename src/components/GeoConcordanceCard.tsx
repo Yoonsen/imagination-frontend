@@ -22,6 +22,9 @@ interface GeoRow {
   placeKeyType?: string;
   placeKey?: string;
   surfaceText?: string;
+  place?: {
+    canonicalName?: string | null;
+  };
 }
 
 interface RenderedRow {
@@ -33,6 +36,10 @@ interface RenderedRow {
 interface GroupedConcordance {
   id: string;
   label: string;
+  historicalName: string;
+  canonicalName: string;
+  historicalVotes: Record<string, number>;
+  canonicalVotes: Record<string, number>;
   type: string;
   key: string;
   totalCount: number;
@@ -178,10 +185,15 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
     rows.forEach((row) => {
       const frag = renderedMap.get(`${row.bookId}:${row.pos}`) || '';
       const extracted = extractPlaceFromFrag(frag);
+      const normalizedPlaceIds = normalizeNbPlaceId(row);
+      const primaryPlaceId = normalizedPlaceIds[0] || '';
       const type = row.placeKeyType || 'nb';
-      const key = row.placeKey || row.surfaceText || extracted || 'ukjent';
-      const label = extracted || row.surfaceText || key;
-      const groupId = `${type}:${label.toLowerCase()}`;
+      const key = primaryPlaceId || row.placeKey || row.surfaceText || extracted || 'ukjent';
+      const historicalName = row.surfaceText || extracted || key;
+      const canonicalCandidate = String(row.place?.canonicalName || '').trim();
+      const canonicalName = canonicalCandidate || historicalName;
+      const label = historicalName;
+      const groupId = primaryPlaceId ? `nb:${primaryPlaceId}` : `${type}:${label.toLowerCase()}`;
 
       if (!byKey.has(groupId)) {
         byKey.set(groupId, {
@@ -189,6 +201,10 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
           key,
           type,
           label,
+          historicalName,
+          canonicalName,
+          historicalVotes: historicalName ? { [historicalName]: 1 } : {},
+          canonicalVotes: canonicalName ? { [canonicalName]: 1 } : {},
           totalCount: 0,
           rows: [],
           capped: false
@@ -198,6 +214,12 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
       const group = byKey.get(groupId);
       if (!group) return;
       group.totalCount += 1;
+      if (historicalName) {
+        group.historicalVotes[historicalName] = (group.historicalVotes[historicalName] || 0) + 1;
+      }
+      if (canonicalName) {
+        group.canonicalVotes[canonicalName] = (group.canonicalVotes[canonicalName] || 0) + 1;
+      }
       if (group.rows.length < MAX_ROWS_PER_GROUP) {
         group.rows.push({ row, frag });
       } else {
@@ -205,9 +227,19 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
       }
     });
 
-    const list = Array.from(byKey.values());
+    const list = Array.from(byKey.values()).map((group) => {
+      const topHistorical = Object.entries(group.historicalVotes)
+        .sort((a, b) => b[1] - a[1])[0]?.[0];
+      const topCanonical = Object.entries(group.canonicalVotes)
+        .sort((a, b) => b[1] - a[1])[0]?.[0];
+      return {
+        ...group,
+        historicalName: topHistorical || group.historicalName,
+        canonicalName: topCanonical || group.canonicalName || group.historicalName
+      };
+    });
     if (groupSort === 'name') {
-      list.sort((a, b) => a.label.localeCompare(b.label, 'nb'));
+      list.sort((a, b) => a.historicalName.localeCompare(b.historicalName, 'nb'));
     } else {
       list.sort((a, b) => b.totalCount - a.totalCount);
     }
@@ -219,10 +251,12 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
     rows.forEach((row) => {
       const frag = renderedMap.get(`${row.bookId}:${row.pos}`) || '';
       const extracted = extractPlaceFromFrag(frag);
+      const normalizedPlaceIds = normalizeNbPlaceId(row);
+      const primaryPlaceId = normalizedPlaceIds[0] || '';
       const type = row.placeKeyType || 'nb';
       const fallback = row.placeKey || row.surfaceText || extracted || 'ukjent';
-      const label = extracted || row.surfaceText || fallback;
-      ids.add(`${type}:${label.toLowerCase()}`);
+      const label = row.surfaceText || extracted || fallback;
+      ids.add(primaryPlaceId ? `nb:${primaryPlaceId}` : `${type}:${label.toLowerCase()}`);
     });
     return ids.size;
   }, [rows, renderedMap]);
@@ -410,7 +444,7 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
       const freqMap = new Map<string, { sted: string; sted_id: string; freq: number }>();
       const concordanceRows = rows.map((row) => {
         const frag = renderedMap.get(`${row.bookId}:${row.pos}`) || '';
-        const placeName = extractPlaceFromFrag(frag) || row.surfaceText || row.placeKey || 'ukjent';
+        const placeName = row.surfaceText || extractPlaceFromFrag(frag) || row.placeKey || 'ukjent';
         const placeId = formatPlaceId(row);
         const freqKey = `${placeId}::${placeName}`;
         const existing = freqMap.get(freqKey);
@@ -488,12 +522,15 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
 
         <div className="geo-conc-body no-drag">
           <div className="geo-conc-search">
-            <input
+            <textarea
               value={query}
               placeholder="Kommaseparerte grupper: oslo, london paris, england"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && query.trim()) runQuery();
+                if (e.key === 'Enter' && !e.shiftKey && query.trim()) {
+                  e.preventDefault();
+                  runQuery();
+                }
               }}
             />
             <label className="geo-conc-proximity">
@@ -633,7 +670,8 @@ export const GeoConcordanceCard: React.FC<GeoConcordanceCardProps> = ({
                     title={(collapsedGroups[group.id] ?? true) ? 'Utvid sted' : 'Kollaps sted'}
                   >
                     <i className={`fas ${(collapsedGroups[group.id] ?? true) ? 'fa-chevron-right' : 'fa-chevron-down'}`}></i>
-                    <strong>{group.label}</strong>
+                    <strong>{group.historicalName}</strong>
+                    <span className="geo-conc-canonical-name">{group.canonicalName}</span>
                   </button>
                   <span>{group.type}:{group.key}</span>
                   <span>{group.totalCount.toLocaleString()} treff</span>

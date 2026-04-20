@@ -28,6 +28,20 @@ interface ConcordanceHit {
     frag: string;
 }
 
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightPlaceInFragment(fragment: string, fallbackToken: string): string {
+    const withBracketHighlight = fragment.replace(/\[([^\]]+)\]/g, (_m, inner: string) => {
+        return `[<mark class="place-hit-mark">${inner}</mark>]`;
+    });
+    if (withBracketHighlight !== fragment) return withBracketHighlight;
+    const token = fallbackToken.trim();
+    if (!token) return fragment;
+    return fragment.replace(new RegExp(escapeRegExp(token), 'gi'), (match) => `<mark class="place-hit-mark">${match}</mark>`);
+}
+
 function buildGeoTermCandidates(placeId: string | null | undefined): string[] {
     if (!placeId) return [];
     const raw = placeId.trim();
@@ -573,7 +587,7 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                                                             key={`${book.dhlabid}:${hit.pos}:${i}`}
                                                             className="concordance-item"
                                                             dangerouslySetInnerHTML={{
-                                                                __html: hit.frag.replaceAll(token, `<mark>${token}</mark>`)
+                                                                __html: highlightPlaceInFragment(hit.frag, token)
                                                             }}
                                                         />
                                                     ))

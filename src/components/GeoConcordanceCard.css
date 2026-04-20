@@ -51,7 +51,7 @@
   flex-wrap: wrap;
 }
 
-.geo-conc-search input {
+.geo-conc-search textarea {
   flex: 1;
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 8px;
@@ -59,6 +59,10 @@
   font-size: 0.84rem;
   color: #0f172a;
   background: rgba(255, 255, 255, 0.75);
+  min-height: 74px;
+  resize: vertical;
+  line-height: 1.35;
+  font-family: inherit;
 }
 
 .geo-conc-search button {
@@ -221,6 +225,12 @@
   text-align: left;
 }
 
+.geo-conc-canonical-name {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 0.74rem;
+}
+
 .geo-conc-toggle i {
   color: #64748b;
   width: 12px;
@@ -266,7 +276,7 @@
 }
 
 .geo-conc-snippet .geo-place-mark {
-  background: rgba(34, 197, 94, 0.28);
+  background: rgba(250, 204, 21, 0.62);
   border-radius: 3px;
 }
 

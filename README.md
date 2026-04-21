@@ -21,5 +21,12 @@ For mer dybdeinformasjon, se den nye dokumentasjons-huben i `docs/`:
 2. **Kjør frontenden:** `npm run dev`
 3. **Kjør backenden:** Gå til `sqlite-backend` repoet og kjør `uv run uvicorn api_imagination:app --port 8080 --reload`.
 
+## Samarbeid og AI-medutvikler
+For trygg samhandling i repoet anbefales denne oppsettet:
+- **Tilganger:** Gi `Write`-tilgang til medutviklere og eventuelle bot-/service-kontoer som skal opprette brancher/PR.
+- **Branch protection:** Beskytt `main` med krav om Pull Request og minst 1 review før merge.
+- **CI-krav:** Krev grønn GitHub Actions-build før merge (for eksempel Pages-build og eventuelle tester/lint).
+- **Arbeidsflyt:** Gjør endringer i feature-branch, åpne PR, og unngå direkte push til `main` når flere jobber parallelt.
+
 ---
 *Utviklet av Nasjonalbiblioteket / DHLab.*

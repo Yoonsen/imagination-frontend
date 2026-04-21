@@ -24,6 +24,15 @@ interface SelectedPlace {
   placeId?: string;
 }
 
+interface OmniboxSearchPlace {
+  id: string;
+  token: string;
+  lat: number;
+  lon: number;
+  frequency: number;
+  doc_count: number;
+}
+
 function App() {
   const {
     setIsBrowseTableOpen,
@@ -58,6 +67,7 @@ function App() {
   const [geoFocusPlaceIds, setGeoFocusPlaceIds] = useState<string[]>([]);
   const [geoFocusDimOthers, setGeoFocusDimOthers] = useState(true);
   const [geoFocusStyle, setGeoFocusStyle] = useState<'fill' | 'ring'>('ring');
+  const [omniboxSearchLayer, setOmniboxSearchLayer] = useState<OmniboxSearchPlace[]>([]);
 
   const openBookSequenceForBook = (bookId: number) => {
     setSequenceBookId(bookId);
@@ -102,6 +112,7 @@ function App() {
               dimOthers: geoFocusDimOthers,
               style: geoFocusStyle
             }}
+            omniboxSearchPlaces={omniboxSearchLayer}
           />
         )}
       </MapContainer>
@@ -109,8 +120,13 @@ function App() {
       {/* Floating UI Elements */}
       <Omnibox
         onSelectPlace={(place) => {
+          setMapVisualMode('map');
           setSelectedPlace(place);
           setActiveWindow('summary');
+        }}
+        onSetSearchMapLayer={(places) => {
+          setMapVisualMode('map');
+          setOmniboxSearchLayer(places);
         }}
       />
       <VisualsLauncherChip

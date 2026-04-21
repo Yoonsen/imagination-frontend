@@ -28,6 +28,9 @@ interface ConcordanceHit {
     frag: string;
 }
 
+const OR_QUERY_PAGE_LIMIT = 5000;
+const OR_QUERY_MAX_PAGES = 80;
+
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -160,30 +163,38 @@ export const PlaceSummaryCard: React.FC<PlaceSummaryCardProps> = ({ token, place
                 if (geoTerms.length === 0) return [];
                 for (const geoTerm of geoTerms) {
                     try {
-                        const res = await fetch(`${API_URL}/or_query`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                terms: [geoTerm],
-                                useFilter: true,
-                                filterIds: activeDhlabids,
-                                totalLimit: 5000,
-                                before: 1,
-                                after: 1,
-                                renderHits: false,
-                                _perf: true
-                            })
-                        });
-                        if (!res.ok) continue;
-                        const data = await res.json();
-                        const rows = Array.isArray(data?.rows) ? data.rows : [];
-                        if (rows.length === 0) continue;
                         const mentionsByBook = new Map<number, number>();
-                        rows.forEach((row: any) => {
-                            const bookId = Number(row?.bookId ?? row?.dhlabid);
-                            if (!Number.isFinite(bookId)) return;
-                            mentionsByBook.set(bookId, (mentionsByBook.get(bookId) || 0) + 1);
-                        });
+                        let hasAnyRows = false;
+                        for (let page = 0; page < OR_QUERY_MAX_PAGES; page += 1) {
+                            const offset = page * OR_QUERY_PAGE_LIMIT;
+                            const res = await fetch(`${API_URL}/or_query`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    terms: [geoTerm],
+                                    useFilter: true,
+                                    filterIds: activeDhlabids,
+                                    totalLimit: OR_QUERY_PAGE_LIMIT,
+                                    offset,
+                                    before: 1,
+                                    after: 1,
+                                    renderHits: false,
+                                    _perf: true
+                                })
+                            });
+                            if (!res.ok) break;
+                            const data = await res.json();
+                            const rows = Array.isArray(data?.rows) ? data.rows : [];
+                            if (rows.length === 0) break;
+                            hasAnyRows = true;
+                            rows.forEach((row: any) => {
+                                const bookId = Number(row?.bookId ?? row?.dhlabid);
+                                if (!Number.isFinite(bookId)) return;
+                                mentionsByBook.set(bookId, (mentionsByBook.get(bookId) || 0) + 1);
+                            });
+                            if (rows.length < OR_QUERY_PAGE_LIMIT) break;
+                        }
+                        if (!hasAnyRows) continue;
                         const out: PlaceBookDetail[] = [];
                         mentionsByBook.forEach((mentions, dhlabid) => {
                             const meta = metadataById.get(dhlabid);

@@ -7,6 +7,14 @@ import type { GeoSequenceRow } from '../utils/geoApi';
 
 interface MapMarkersProps {
     onSelectPlace: (place: { token: string; placeId?: string }) => void;
+    omniboxSearchPlaces?: Array<{
+        id: string;
+        token: string;
+        lat: number;
+        lon: number;
+        frequency: number;
+        doc_count: number;
+    }>;
     bookSequence?: {
         rows: GeoSequenceRow[];
         dimOthers: boolean;
@@ -95,7 +103,7 @@ const filterByShortSteps = (rows: GeoSequenceRow[], maxStepKm: number): GeoSeque
     return filtered;
 };
 
-export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSequence, geoFocus }) => {
+export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, omniboxSearchPlaces, bookSequence, geoFocus }) => {
     const {
         places,
         activeDhlabids,
@@ -232,9 +240,33 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
     }, [temporalEnabled, activeBooksMetadata, API_URL, maxPlacesInView, totalPlaces]);
 
     const renderedLayers = useMemo(() => {
+        const omniboxMarkers = (omniboxSearchPlaces || []).map((place) => (
+            <CircleMarker
+                key={`omnibox-${place.id}`}
+                center={[place.lat, place.lon]}
+                radius={7}
+                pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 0.22, weight: 2.8 }}
+                eventHandlers={{
+                    add: (e) => e.target.bringToFront(),
+                    click: () => {
+                        onSelectPlace({ token: place.token, placeId: place.id });
+                        map.panTo([place.lat, place.lon]);
+                    }
+                }}
+            >
+                <Tooltip sticky>
+                    <div style={{ textAlign: 'center', fontSize: '0.85rem' }}>
+                        <strong>{place.token}</strong><br />
+                        Omnibox-søk<br />
+                        <strong>{place.frequency.toLocaleString()}</strong> treff i <strong>{place.doc_count.toLocaleString()}</strong> bøker
+                    </div>
+                </Tooltip>
+            </CircleMarker>
+        ));
+
         if (compareReady && !comparePlaces) {
             // Avoid showing stale non-compare markers while compare places are loading.
-            return [];
+            return omniboxMarkers;
         }
         if (compareReady && comparePlaces && comparePlaces.length > 0) {
             const mapPlaces = [...comparePlaces]
@@ -245,7 +277,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             const maxFreq = Math.max(...frequencies);
             const logMin = Math.log1p(minFreq);
             const logMax = Math.log1p(maxFreq);
-            return mapPlaces.map((place) => {
+            const compareMarkers = mapPlaces.map((place) => {
                 let radius = 6;
                 if (logMax > logMin) {
                     const norm = (Math.log1p(place.frequencyA + place.frequencyB) - logMin) / (logMax - logMin);
@@ -282,10 +314,11 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
                     </CircleMarker>
                 );
             });
+            return [...compareMarkers, ...omniboxMarkers];
         }
 
-        if (!temporalMappingReady) return [];
-        if (places.length === 0) return [];
+        if (!temporalMappingReady) return omniboxMarkers;
+        if (places.length === 0) return omniboxMarkers;
         const mapPlaces = [...places]
             .sort((a, b) => b.frequency - a.frequency)
             .slice(0, MAP_MARKER_LIMIT);
@@ -505,11 +538,12 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
             .filter((point): point is [number, number] => Array.isArray(point));
 
         if (!bookSequence?.showLine || polylinePoints.length < 2) {
-            return [...markers, ...sequenceOverlayMarkers];
+            return [...markers, ...sequenceOverlayMarkers, ...omniboxMarkers];
         }
         return [
             ...markers,
             ...sequenceOverlayMarkers,
+            ...omniboxMarkers,
             <Polyline
                 key="book-sequence-line"
                 positions={polylinePoints}
@@ -532,12 +566,14 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({ onSelectPlace, bookSeque
         bookSequence,
         geoFocus,
         compareReady,
-        comparePlaces
+        comparePlaces,
+        omniboxSearchPlaces
     ]);
 
     const markerRenderKey = `${compareReady ? 'compare' : 'normal'}:${markerSizeScale}`;
 
-    if (isPlacesLoading || !temporalMappingReady) {
+    const hasOmniboxOverlay = (omniboxSearchPlaces?.length || 0) > 0;
+    if ((isPlacesLoading || !temporalMappingReady) && !hasOmniboxOverlay) {
         // En elegant måte å vise kart-loading på kan implementeres
         return null;
     }
